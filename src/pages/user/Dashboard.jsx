@@ -17,24 +17,20 @@ const Dashboard = () => {
   useEffect(() => {
     // Load local data
     const loadLocalData = () => {
-      const rides = JSON.parse(localStorage.getItem('rides') || '[]');
-      const subscriptions = JSON.parse(localStorage.getItem('subscriptions') || '[]');
+      // Get user's active subscription
+      const hasActiveSubscription = user?.subscription && 
+        new Date(user.subscription.end_date) > new Date();
       
-      // Filter rides for current user
-      const userRides = rides.filter(ride => ride.userId === user?.id);
+      // Get user's rides
+      const userRides = user?.rides || [];
       
-      // Filter active subscriptions for current user
-      const activeUserSubscriptions = subscriptions.filter(
-        sub => sub.userId === user?.id && new Date(sub.endDate) > new Date()
-      );
-
       // Calculate total refunds (mock data for now)
       const totalRefunds = userRides.reduce((total, ride) => 
         total + (ride.refundAmount || 0), 0);
 
       // Set stats
       setStats({
-        activeSubscriptions: activeUserSubscriptions.length,
+        activeSubscriptions: hasActiveSubscription ? 1 : 0,
         totalRides: userRides.length,
         totalRefunds: totalRefunds
       });
@@ -42,12 +38,16 @@ const Dashboard = () => {
       // Get today's rides
       const today = new Date().toISOString().split('T')[0];
       const todaysRides = userRides.filter(ride => 
-        ride.date?.startsWith(today)
+        new Date(ride.date).toISOString().startsWith(today)
       );
 
       setTodayRides(todaysRides);
       setLoading(false);
     };
+
+    if (user) {
+      loadLocalData();
+    }
 
     if (user) {
       loadLocalData();
@@ -75,6 +75,42 @@ const Dashboard = () => {
           <p className="text-gray-600">Here's your ride sharing overview for today.</p>
         </div>
 
+        {/* Active Subscription Details */}
+        {user?.subscription && new Date(user.subscription.end_date) > new Date() && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-4">Active Subscription</h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Plan Type:</span>
+                <span className="font-medium capitalize">{user.subscription.plan_type}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Price:</span>
+                <span className="font-medium">{user.subscription.price} Taka</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Valid Until:</span>
+                <span className="font-medium">
+                  {new Date(user.subscription.end_date).toLocaleDateString()}
+                </span>
+              </div>
+              <div className="mt-4 pt-4 border-t">
+                <h4 className="font-medium mb-2">Route Details:</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center text-gray-600">
+                    <MapPin className="h-4 w-4 mr-2" />
+                    <span>From: {user.subscription.pickup_location.address.replace(', Bangladesh', '')}</span>
+                  </div>
+                  <div className="flex items-center text-gray-600">
+                    <MapPin className="h-4 w-4 mr-2" />
+                    <span>To: {user.subscription.drop_location.address.replace(', Bangladesh', '')}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white rounded-lg shadow p-6">
@@ -83,8 +119,10 @@ const Dashboard = () => {
                 <Calendar className="h-8 w-8 text-blue-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Active Subscriptions</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.activeSubscriptions || 0}</p>
+                <p className="text-sm font-medium text-gray-500">Subscription Status</p>
+                <p className="text-2xl font-semibold text-gray-900">
+                  {user?.subscription && new Date(user.subscription.end_date) > new Date() ? 'Active' : 'Inactive'}
+                </p>
               </div>
             </div>
           </div>

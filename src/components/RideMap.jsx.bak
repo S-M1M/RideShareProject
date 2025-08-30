@@ -1,0 +1,14 @@
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+
+const RideMap = () => {
+  const navigate = useNavigate();
+  
+  React.useEffect(() => {
+    navigate('/map');
+  }, [navigate]);
+  
+  return null;
+};
+
+export default RideMap;

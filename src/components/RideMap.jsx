@@ -3,57 +3,90 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
+// Fix for the default marker icons
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+// Custom icons
+const pickupIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+const dropIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+const vehicleIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+// Default center coordinates (Dhaka)
+const defaultCenter = [23.7805, 90.4091];
+
 const RideMap = ({ ride }) => {
   const [vehiclePosition, setVehiclePosition] = useState(null);
   const [routePath, setRoutePath] = useState([]);
 
   useEffect(() => {
-    if (ride?.subscription_id) {
-      const pickup = ride.subscription_id.pickup_location;
-      const drop = ride.subscription_id.drop_location;
-      
-      if (pickup && drop) {
-        setRoutePath([
-          [pickup.latitude, pickup.longitude],
-          [drop.latitude, drop.longitude]
-        ]);
-        
-        // Simulate vehicle movement
-        simulateVehicleMovement(pickup, drop);
-      }
+    const pickupCoords = [23.7576, 90.4208]; // Rampura
+    const dropCoords = [23.7969, 90.4199]; // Notun Bazar
+    
+    setRoutePath([pickupCoords, dropCoords]);
+
+    // Set initial vehicle position
+    if (ride?.currentLocation) {
+      setVehiclePosition([ride.currentLocation.latitude, ride.currentLocation.longitude]);
+    } else {
+      setVehiclePosition(pickupCoords);
+    }
+
+    // Simulate vehicle movement if ride is active
+    if (ride?.status === 'active') {
+      const interval = setInterval(() => {
+        setVehiclePosition(current => {
+          if (!current) return pickupCoords;
+          
+          const [currentLat, currentLng] = current;
+          const latDiff = (dropCoords[0] - currentLat) * 0.1;
+          const lngDiff = (dropCoords[1] - currentLng) * 0.1;
+          
+          const newLat = currentLat + latDiff;
+          const newLng = currentLng + lngDiff;
+          
+          // Stop when close to destination
+          if (Math.abs(newLat - dropCoords[0]) < 0.001 && Math.abs(newLng - dropCoords[1]) < 0.001) {
+            clearInterval(interval);
+            return dropCoords;
+          }
+          
+          return [newLat, newLng];
+        });
+      }, 2000);
+
+      return () => clearInterval(interval);
     }
   }, [ride]);
 
-  const simulateVehicleMovement = (pickup, drop) => {
-    // Start at pickup location
-    setVehiclePosition([pickup.latitude, pickup.longitude]);
-    
-    // Simulate movement towards drop location
-    const interval = setInterval(() => {
-      setVehiclePosition(current => {
-        if (!current) return [pickup.latitude, pickup.longitude];
-        
-        const [currentLat, currentLng] = current;
-        const latDiff = (drop.latitude - currentLat) * 0.1;
-        const lngDiff = (drop.longitude - currentLng) * 0.1;
-        
-        const newLat = currentLat + latDiff;
-        const newLng = currentLng + lngDiff;
-        
-        // Stop when close to destination
-        if (Math.abs(newLat - drop.latitude) < 0.001 && Math.abs(newLng - drop.longitude) < 0.001) {
-          clearInterval(interval);
-          return [drop.latitude, drop.longitude];
-        }
-        
-        return [newLat, newLng];
-      });
-    }, 2000);
-
-    return () => clearInterval(interval);
-  };
-
-  if (!ride?.subscription_id) {
+  if (!ride) {
     return (
       <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
         <p className="text-gray-500">No route data available</p>
@@ -61,43 +94,11 @@ const RideMap = ({ ride }) => {
     );
   }
 
-  const pickup = ride.subscription_id.pickup_location;
-  const drop = ride.subscription_id.drop_location;
-  const center = pickup ? [pickup.latitude, pickup.longitude] : [37.7749, -122.4194];
-
-  // Custom icons
-  const pickupIcon = new L.Icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-  });
-
-  const dropIcon = new L.Icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-  });
-
-  const vehicleIcon = new L.Icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-  });
-
   return (
     <div className="space-y-4">
       <div className="h-96 w-full rounded-lg overflow-hidden border">
         <MapContainer
-          center={center}
+          center={vehiclePosition || defaultCenter}
           zoom={13}
           style={{ height: '100%', width: '100%' }}
         >
@@ -106,24 +107,22 @@ const RideMap = ({ ride }) => {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           
-          {/* Pickup Marker */}
-          {pickup && (
-            <Marker position={[pickup.latitude, pickup.longitude]} icon={pickupIcon}>
-              <Popup>
-                <strong>Pickup Location</strong><br />
-                {pickup.address}
-              </Popup>
-            </Marker>
-          )}
-          
-          {/* Drop Marker */}
-          {drop && (
-            <Marker position={[drop.latitude, drop.longitude]} icon={dropIcon}>
-              <Popup>
-                <strong>Drop Location</strong><br />
-                {drop.address}
-              </Popup>
-            </Marker>
+          {/* Pickup and Drop Markers */}
+          {routePath.length > 0 && (
+            <>
+              <Marker position={routePath[0]} icon={pickupIcon}>
+                <Popup>
+                  <strong>Pickup Location</strong><br />
+                  Rampura, Dhaka
+                </Popup>
+              </Marker>
+              <Marker position={routePath[1]} icon={dropIcon}>
+                <Popup>
+                  <strong>Drop Location</strong><br />
+                  Notun Bazar, Dhaka
+                </Popup>
+              </Marker>
+            </>
           )}
           
           {/* Vehicle Marker */}
@@ -150,21 +149,20 @@ const RideMap = ({ ride }) => {
           <div>
             <p className="text-gray-600">Status</p>
             <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-              ride.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
-              ride.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
-              ride.status === 'completed' ? 'bg-green-100 text-green-800' :
-              'bg-red-100 text-red-800'
+              ride?.status === 'active' ? 'bg-yellow-100 text-yellow-800' :
+              ride?.status === 'completed' ? 'bg-green-100 text-green-800' :
+              'bg-blue-100 text-blue-800'
             }`}>
-              {ride.status.replace('_', ' ')}
+              {ride?.status || 'Not Available'}
             </span>
           </div>
           <div>
-            <p className="text-gray-600">Distance</p>
-            <p className="font-medium">{ride.subscription_id.distance} km</p>
+            <p className="text-gray-600">From</p>
+            <p className="font-medium">Rampura, Dhaka</p>
           </div>
           <div>
-            <p className="text-gray-600">Scheduled Time</p>
-            <p className="font-medium">{ride.subscription_id.schedule?.time || 'Not set'}</p>
+            <p className="text-gray-600">To</p>
+            <p className="font-medium">Notun Bazar, Dhaka</p>
           </div>
         </div>
       </div>

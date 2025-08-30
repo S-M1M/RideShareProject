@@ -15,28 +15,116 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      setUser(JSON.parse(userData));
-    }
+    // Demo user data with subscription
+    const demoUser = {
+      id: "demo123",
+      name: "Mim",
+      email: "user@gmail.com",
+      password: "123",
+      phone: "01700000000",
+      role: "user",
+      subscription: {
+        id: "sub123",
+        plan_type: "weekly",
+        start_date: new Date().toISOString(),
+        end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        price: 756,
+        status: "active",
+        pickup_location: {
+          latitude: 23.7576,
+          longitude: 90.4208,
+          address: "Rampura, Dhaka, Bangladesh"
+        },
+        drop_location: {
+          latitude: 23.7969,
+          longitude: 90.4199,
+          address: "Notun Bazar, Dhaka, Bangladesh"
+        }
+      },
+      rides: [
+        {
+          id: "ride1",
+          date: new Date().toISOString(),
+          status: "active",
+          pickup: "Rampura, Dhaka, Bangladesh",
+          destination: "Notun Bazar, Dhaka, Bangladesh",
+          fare: 200,
+          currentLocation: {
+            latitude: 23.7776,
+            longitude: 90.4203
+          }
+        },
+        {
+          id: "ride2",
+          date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+          status: "completed",
+          pickup: "Rampura, Dhaka, Bangladesh",
+          destination: "Notun Bazar, Dhaka, Bangladesh",
+          fare: 200
+        }
+      ]
+    };
+
+    setUser(demoUser);
+    localStorage.setItem('user', JSON.stringify(demoUser));
     setLoading(false);
   }, []);
 
   const login = async (credentials, userType = 'user') => {
     try {
-      // Get users from localStorage
-      const users = JSON.parse(localStorage.getItem('users') || '[]');
-      
-      // Find user with matching credentials
-      const user = users.find(u => 
-        u.email === credentials.email && 
-        u.password === credentials.password &&
-        (userType === 'user' ? !u.role : u.role === userType)
-      );
-      
-      if (!user) {
+      // Check for demo user credentials
+      if (credentials.email !== 'user@gmail.com' || credentials.password !== '123') {
         throw new Error('Invalid credentials');
       }
+
+      // Demo user data
+      const user = {
+        id: "demo123",
+        name: "Mim",
+        email: "user@gmail.com",
+        phone: "01700000000",
+        role: "user",
+        subscription: {
+          id: "sub123",
+          plan_type: "weekly",
+          start_date: new Date().toISOString(),
+          end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          price: 756,
+          status: "active",
+          pickup_location: {
+            latitude: 23.7576,
+            longitude: 90.4208,
+            address: "Rampura, Dhaka"
+          },
+          drop_location: {
+            latitude: 23.7969,
+            longitude: 90.4199,
+            address: "Notun Bazar, Dhaka"
+          }
+        },
+        rides: [
+          {
+            id: "ride1",
+            date: new Date().toISOString(),
+            status: "active",
+            pickup: "Rampura, Dhaka",
+            destination: "Notun Bazar, Dhaka",
+            fare: 756,
+            currentLocation: {
+              latitude: 23.7776,
+              longitude: 90.4203
+            }
+          },
+          {
+            id: "ride2",
+            date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+            status: "completed",
+            pickup: "Rampura, Dhaka",
+            destination: "Notun Bazar, Dhaka",
+            fare: 756
+          }
+        ]
+      };
       
       // Create a user object without password
       const userWithoutPassword = { ...user };

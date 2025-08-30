@@ -20,7 +20,6 @@ const Profile = () => {
         phone: user.phone || ''
       });
     }
-    fetchSubscriptions();
   }, [user]);
 
   const fetchSubscriptions = async () => {
@@ -142,46 +141,44 @@ const Profile = () => {
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold mb-4">Active Subscriptions</h3>
           
-          {subscriptions.length === 0 ? (
+          {!user?.subscription ? (
             <p className="text-gray-500 text-center py-4">No active subscriptions found.</p>
           ) : (
             <div className="space-y-4">
-              {subscriptions.map((subscription) => (
-                <div key={subscription._id} className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <span className="font-medium capitalize">{subscription.plan_type} Plan</span>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          subscription.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                          {subscription.active ? 'Active' : 'Cancelled'}
-                        </span>
-                      </div>
-                      
-                      <div className="text-sm text-gray-600 space-y-1">
-                        <p>Route: {subscription.pickup_location?.address} → {subscription.drop_location?.address}</p>
-                        <p>Distance: {subscription.distance} km</p>
-                        <p>Price: ${subscription.price}</p>
-                        <p>
-                          Period: {new Date(subscription.start_date).toLocaleDateString()} - {new Date(subscription.end_date).toLocaleDateString()}
-                        </p>
-                        <p>Days: {subscription.schedule?.days?.join(', ') || 'N/A'}</p>
-                        <p>Time: {subscription.schedule?.time || 'N/A'}</p>
-                      </div>
+              <div key={user.subscription.id} className="border rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <span className="font-medium capitalize">{user.subscription.plan_type} Plan</span>
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        user.subscription.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {user.subscription.status === 'active' ? 'Active' : 'Cancelled'}
+                      </span>
                     </div>
-
-                    {subscription.active && (
-                      <button
-                        onClick={() => cancelSubscription(subscription._id)}
-                        className="ml-4 px-3 py-1 bg-red-600 text-white text-sm rounded-md hover:bg-red-700"
-                      >
-                        Cancel
-                      </button>
-                    )}
+                    
+                    <div className="text-sm text-gray-600 space-y-1">
+                      <p>Route: {user.subscription.pickup_location?.address} → {user.subscription.drop_location?.address}</p>
+                      <p>Distance: {user.subscription.distance || '10'} km</p>
+                      <p>Price: ৳{user.subscription.price}</p>
+                      <p>
+                        Period: {new Date(user.subscription.start_date).toLocaleDateString()} - {new Date(user.subscription.end_date).toLocaleDateString()}
+                      </p>
+                      <p>Days: {user.subscription.schedule?.days?.join(', ') || 'Sunday - Thursday'}</p>
+                      <p>Time: {user.subscription.schedule?.time || '08:30'}</p>
+                    </div>
                   </div>
+
+                  {user.subscription.status === 'active' && (
+                    <button
+                      onClick={() => cancelSubscription(user.subscription.id)}
+                      className="ml-4 px-3 py-1 bg-red-600 text-white text-sm rounded-md hover:bg-red-700"
+                    >
+                      Cancel
+                    </button>
+                  )}
                 </div>
-              ))}
+              </div>
             </div>
           )}
         </div>

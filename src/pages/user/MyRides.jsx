@@ -1,27 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import { Calendar, MapPin, DollarSign, Clock } from 'lucide-react';
-import axios from 'axios';
+import { useAuth } from '../../contexts/AuthContext';
 
 const MyRides = () => {
+  const { user } = useAuth();
   const [rides, setRides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
 
   useEffect(() => {
-    fetchRides();
-  }, []);
-
-  const fetchRides = async () => {
-    try {
-      const response = await axios.get('http://localhost:5000/api/rides');
-      setRides(response.data);
-    } catch (error) {
-      console.error('Error fetching rides:', error);
-    } finally {
+    if (user && user.rides) {
+      setRides(user.rides);
       setLoading(false);
     }
-  };
+  }, [user]);
 
   const cancelRide = async (rideId) => {
     if (!confirm('Are you sure you want to cancel this ride? You will receive a 50% refund.')) {
@@ -117,8 +110,8 @@ const MyRides = () => {
                     <div className="flex items-center space-x-2 mb-2">
                       <MapPin className="h-4 w-4 text-gray-400" />
                       <span className="text-sm">
-                        {ride.subscription_id?.pickup_location?.address || 'Pickup Location'} 
-                        → {ride.subscription_id?.drop_location?.address || 'Drop Location'}
+                        {ride.pickup.replace(', Bangladesh', '')} 
+                        → {ride.destination.replace(', Bangladesh', '')}
                       </span>
                     </div>
 
