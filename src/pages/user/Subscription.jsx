@@ -49,7 +49,7 @@ const Subscription = () => {
   const toRad = (value) => value * Math.PI / 180;
 
   const calculatePrice = () => {
-    const baseRate = 160; // 160 taka per km
+    const baseRate = 50; // 50 taka per km
     const multipliers = { daily: 1, weekly: 6, monthly: 25 };
     setPrice(distance * baseRate * multipliers[formData.plan_type]);
   };

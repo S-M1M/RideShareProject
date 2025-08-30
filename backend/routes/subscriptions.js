@@ -7,7 +7,7 @@ const router = express.Router();
 
 // Calculate subscription price based on distance and plan
 const calculatePrice = (distance, planType) => {
-  const baseRate = 60; // 160 taka per km
+  const baseRate = 50; // 50 taka per km
   const multipliers = {
     daily: 1,
     weekly: 6, // 7 days but 1 day free
