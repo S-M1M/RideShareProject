@@ -1,0 +1,54 @@
+import mongoose from 'mongoose';
+
+const subscriptionSchema = new mongoose.Schema({
+  user_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  plan_type: {
+    type: String,
+    enum: ['daily', 'weekly', 'monthly'],
+    required: true
+  },
+  start_date: {
+    type: Date,
+    required: true
+  },
+  end_date: {
+    type: Date,
+    required: true
+  },
+  price: {
+    type: Number,
+    required: true
+  },
+  pickup_location: {
+    latitude: { type: Number, required: true },
+    longitude: { type: Number, required: true },
+    address: String
+  },
+  drop_location: {
+    latitude: { type: Number, required: true },
+    longitude: { type: Number, required: true },
+    address: String
+  },
+  active: {
+    type: Boolean,
+    default: true
+  },
+  schedule: {
+    days: [String], // ['monday', 'tuesday', etc.]
+    time: String // '08:30'
+  },
+  distance: {
+    type: Number,
+    required: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+export default mongoose.model('Subscription', subscriptionSchema);
