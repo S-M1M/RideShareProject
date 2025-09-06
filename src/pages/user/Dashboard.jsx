@@ -145,8 +145,8 @@ const Dashboard = () => {
                 <DollarSign className="h-8 w-8 text-yellow-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Refunds</p>
-                <p className="text-2xl font-semibold text-gray-900">${stats.totalRefunds || 0}</p>
+                <p className="text-sm font-medium text-gray-500">Total points</p>
+                <p className="text-2xl font-semibold text-gray-900">{stats.totalRefunds || 0}</p>
               </div>
             </div>
           </div>
