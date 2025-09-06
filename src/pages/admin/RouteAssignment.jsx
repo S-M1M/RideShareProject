@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import { Calendar, MapPin, Users, Plus } from 'lucide-react';
-import axios from 'axios';
+
 
 const RouteAssignment = () => {
   const [routes, setRoutes] = useState([]);
@@ -17,7 +17,7 @@ const RouteAssignment = () => {
 
   const fetchDrivers = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/admin/drivers');
+      const response = await api.get('/admin/drivers');
       setDrivers(response.data);
     } catch (error) {
       console.error('Error fetching drivers:', error);
@@ -28,7 +28,7 @@ const RouteAssignment = () => {
 
   const fetchVehicles = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/admin/vehicles');
+      const response = await api.get('/admin/vehicles');
       setVehicles(response.data);
     } catch (error) {
       console.error('Error fetching vehicles:', error);
@@ -203,7 +203,7 @@ const AssignRouteModal = ({ drivers, vehicles, selectedDate, onClose, onSuccess 
     setLoading(true);
 
     try {
-      await axios.post('http://localhost:5000/api/admin/routes', {
+      await api.post('/admin/routes', {
         ...formData,
         date: selectedDate
       });

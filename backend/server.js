@@ -19,7 +19,7 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/ridesharing', {
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://rideshareproject-vyu1.onrender.com:27017/ridesharing', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });

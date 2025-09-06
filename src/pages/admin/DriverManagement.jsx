@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import { Plus, Search, Truck, Mail, Phone, Car } from 'lucide-react';
-import axios from 'axios';
+
 
 const DriverManagement = () => {
   const [drivers, setDrivers] = useState([]);
@@ -16,7 +16,7 @@ const DriverManagement = () => {
 
   const fetchDrivers = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/admin/drivers');
+      const response = await api.get('/admin/drivers');
       setDrivers(response.data);
     } catch (error) {
       console.error('Error fetching drivers:', error);
@@ -27,7 +27,7 @@ const DriverManagement = () => {
 
   const fetchVehicles = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/admin/vehicles');
+      const response = await api.get('/admin/vehicles');
       setVehicles(response.data);
     } catch (error) {
       console.error('Error fetching vehicles:', error);
@@ -159,7 +159,7 @@ const AddDriverModal = ({ vehicles, onClose, onSuccess }) => {
     setLoading(true);
 
     try {
-      await axios.post('http://localhost:5000/api/admin/drivers', formData);
+      await api.post('/admin/drivers', formData);
       onSuccess();
     } catch (error) {
       alert('Error adding driver: ' + (error.response?.data?.error || error.message));

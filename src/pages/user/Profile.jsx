@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import { useAuth } from '../../contexts/AuthContext';
 import { User, Phone, Mail, Save } from 'lucide-react';
-import axios from 'axios';
+
 
 const Profile = () => {
   const { user } = useAuth();
@@ -24,7 +24,7 @@ const Profile = () => {
 
   const fetchSubscriptions = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/subscriptions');
+      const response = await api.get('/subscriptions');
       setSubscriptions(response.data);
     } catch (error) {
       console.error('Error fetching subscriptions:', error);
@@ -36,7 +36,7 @@ const Profile = () => {
     setLoading(true);
 
     try {
-      await axios.put('http://localhost:5000/api/users/profile', formData);
+      await api.put('/users/profile', formData);
       alert('Profile updated successfully!');
     } catch (error) {
       alert('Error updating profile: ' + (error.response?.data?.error || error.message));
@@ -58,7 +58,7 @@ const Profile = () => {
     }
 
     try {
-      await axios.put(`http://localhost:5000/api/subscriptions/${subscriptionId}/cancel`);
+      await api.put(`/subscriptions/${subscriptionId}/cancel`);
       fetchSubscriptions();
       alert('Subscription cancelled successfully.');
     } catch (error) {

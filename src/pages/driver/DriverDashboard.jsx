@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import { useAuth } from '../../contexts/AuthContext';
 import { MapPin, Clock, Phone, User, Navigation } from 'lucide-react';
-import axios from 'axios';
+
 
 const DriverDashboard = () => {
   const { user } = useAuth();
@@ -15,7 +15,7 @@ const DriverDashboard = () => {
 
   const fetchTodayRoutes = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/drivers/routes/today');
+      const response = await api.get('/drivers/routes/today');
       setRoutes(response.data);
     } catch (error) {
       console.error('Error fetching routes:', error);
@@ -26,7 +26,7 @@ const DriverDashboard = () => {
 
   const updateRouteStatus = async (routeId, status) => {
     try {
-      await axios.put(`http://localhost:5000/api/drivers/routes/${routeId}/status`, { status });
+      await api.put(`/drivers/routes/${routeId}/status`, { status });
       fetchTodayRoutes();
     } catch (error) {
       alert('Error updating route status: ' + (error.response?.data?.error || error.message));

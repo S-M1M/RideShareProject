@@ -3,6 +3,7 @@ import Layout from '../../components/Layout';
 import { Calendar, MapPin, DollarSign, Clock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
+
 const MyRides = () => {
   const { user } = useAuth();
   const [rides, setRides] = useState([]);
@@ -22,7 +23,7 @@ const MyRides = () => {
     }
 
     try {
-      await axios.put(`http://localhost:5000/api/rides/${rideId}/cancel`);
+      await api.put(`/rides/${rideId}/cancel`);
       fetchRides();
       alert('Ride cancelled successfully. Refund will be processed.');
     } catch (error) {

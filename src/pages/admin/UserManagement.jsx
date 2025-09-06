@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import { Search, User, Mail, Phone, Calendar } from 'lucide-react';
-import axios from 'axios';
+
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
@@ -23,7 +23,7 @@ const UserManagement = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/admin/users');
+      const response = await api.get('/admin/users');
       setUsers(response.data);
     } catch (error) {
       console.error('Error fetching users:', error);

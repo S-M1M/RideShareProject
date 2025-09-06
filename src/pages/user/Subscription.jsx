@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import MapSelector from '../../components/MapSelector';
 import { Calendar, DollarSign, MapPin } from 'lucide-react';
-import axios from 'axios';
+
 
 const Subscription = () => {
   const [step, setStep] = useState(1);
@@ -66,7 +66,7 @@ const Subscription = () => {
     setLoading(true);
 
     try {
-      await axios.post('http://localhost:5000/api/subscriptions', {
+      await api.post('/subscriptions', {
         ...formData,
         distance
       });

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import { DollarSign, TrendingUp, CreditCard, RefreshCcw } from 'lucide-react';
-import axios from 'axios';
+
 
 const Finance = () => {
   const [financialData, setFinancialData] = useState({
@@ -20,7 +20,7 @@ const Finance = () => {
   const fetchFinancialData = async () => {
     try {
       // In a real app, you'd have specific financial endpoints
-      const response = await axios.get('http://localhost:5000/api/admin/dashboard');
+      const response = await api.get('/admin/dashboard');
       setFinancialData({
         totalRevenue: response.data.totalRevenue || 0,
         totalRefunds: 0, // Would come from refund calculations

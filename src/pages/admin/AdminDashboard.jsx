@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import { Users, Car, Calendar, DollarSign, Truck, MapPin } from 'lucide-react';
-import axios from 'axios';
+
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({});
@@ -13,7 +13,7 @@ const AdminDashboard = () => {
 
   const fetchDashboardStats = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/admin/dashboard');
+      const response = await api.get('/admin/dashboard');
       setStats(response.data);
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
