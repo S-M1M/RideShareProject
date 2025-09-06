@@ -83,6 +83,43 @@ const MyRides = () => {
               ))}
             </nav>
           </div>
+        );
+      })}
+
+      {/* Route line */}
+      {selectedPickup && selectedDrop && selectedPickup !== selectedDrop && (
+        <svg className="absolute inset-0 w-full h-full pointer-events-none">
+          <defs>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#f59e0b" />
+            </marker>
+          </defs>
+          <line
+            x1={`${20 + ((parseInt(selectedPickup) - 1) * 15)}%`}
+            y1={`${30 + ((parseInt(selectedPickup) - 1) % 2 === 0 ? 0 : 20)}%`}
+            x2={`${20 + ((parseInt(selectedDrop) - 1) * 15)}%`}
+            y2={`${30 + ((parseInt(selectedDrop) - 1) % 2 === 0 ? 0 : 20)}%`}
+            stroke="#f59e0b"
+            strokeWidth="3"
+            strokeDasharray="5,5"
+            markerEnd="url(#arrowhead)"
+            className="animate-pulse"
+          />
+        </svg>
+      )}
+    </div>
+  );
+
+  return (
+    <Layout >
+    <div className="max-w-4xl mx-auto p-6 bg-gray-50 min-h-screen">
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+
+        
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
+          <h1 className="text-2xl font-bold mb-2">Bus Route Map</h1>
+          <p className="text-blue-100">Select your pickup and drop locations to view fare</p>
         </div>
 
         {/* Rides List */}
