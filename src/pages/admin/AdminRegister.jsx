@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Truck } from 'lucide-react';
+import { Car } from 'lucide-react';
 
-const DriverLogin = () => {
+const AdminRegister = () => {
   const [formData, setFormData] = useState({
+    name: '',
     email: '',
-    password: ''
+    password: '',
+    phone: ''
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { login } = useAuth();
+  const { register } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -19,12 +21,25 @@ const DriverLogin = () => {
     setLoading(true);
     setError('');
 
-    const result = await login(formData, 'driver');
-    
-    if (result.success) {
-      navigate('/driver/dashboard');
-    } else {
-      setError(result.error);
+    try {
+      const response = await fetch('/api/auth/admin/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        localStorage.setItem('token', data.token);
+        navigate('/admin/dashboard');
+      } else {
+        setError(data.error);
+      }
+    } catch (error) {
+      setError('Registration failed. Please try again.');
     }
     
     setLoading(false);
@@ -42,19 +57,16 @@ const DriverLogin = () => {
       <div className="max-w-md w-full space-y-8">
         <div>
           <div className="flex justify-center">
-            <Truck className="h-12 w-12 text-blue-600" />
+            <Car className="h-12 w-12 text-blue-600" />
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Driver Sign In
+            Create admin account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Or{' '}
-            <Link to="/driver/register" className="font-medium text-blue-600 hover:text-blue-500">
-              create a new driver account
+            <Link to="/admin/login" className="font-medium text-blue-600 hover:text-blue-500">
+              sign in to existing account
             </Link>
-          </p>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Access your driver dashboard
           </p>
         </div>
         
@@ -66,6 +78,22 @@ const DriverLogin = () => {
           )}
           
           <div className="space-y-4">
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                Full Name
+              </label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                required
+                value={formData.name}
+                onChange={handleChange}
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter your full name"
+              />
+            </div>
+            
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email
@@ -79,6 +107,22 @@ const DriverLogin = () => {
                 onChange={handleChange}
                 className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter your email"
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                Phone Number
+              </label>
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                required
+                value={formData.phone}
+                onChange={handleChange}
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter your phone number"
               />
             </div>
             
@@ -105,14 +149,8 @@ const DriverLogin = () => {
               disabled={loading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
             >
-              {loading ? 'Signing in...' : 'Sign in as Driver'}
+              {loading ? 'Creating account...' : 'Create admin account'}
             </button>
-          </div>
-
-          <div className="text-center">
-            <Link to="/login" className="text-sm text-blue-600 hover:text-blue-500">
-              Back to User Login
-            </Link>
           </div>
         </form>
       </div>
@@ -120,4 +158,4 @@ const DriverLogin = () => {
   );
 };
 
-export default DriverLogin;
+export default AdminRegister;

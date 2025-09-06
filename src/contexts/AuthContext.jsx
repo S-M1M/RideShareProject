@@ -33,9 +33,12 @@ export const AuthProvider = ({ children }) => {
     loadUser();
   }, []);
 
-  const login = async (credentials) => {
+  const login = async (credentials, role = 'user') => {
     try {
-      const res = await api.post("/auth/login", credentials);
+      const endpoint = role === 'driver' ? '/auth/driver/login' : 
+                      role === 'admin' ? '/auth/admin/login' : 
+                      '/auth/login';
+      const res = await api.post(endpoint, credentials);
       localStorage.setItem("token", res.data.token);
       setUser(res.data.user);
       return { success: true };
@@ -47,9 +50,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (userData) => {
+  const register = async (userData, role = 'user') => {
     try {
-      const res = await api.post("/auth/register", userData);
+      const endpoint = role === 'driver' ? '/auth/driver/register' : 
+                      role === 'admin' ? '/auth/admin/register' : 
+                      '/auth/register';
+      const res = await api.post(endpoint, userData);
       localStorage.setItem("token", res.data.token);
       setUser(res.data.user);
       return { success: true };

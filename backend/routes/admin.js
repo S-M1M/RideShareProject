@@ -1,5 +1,6 @@
 import express from 'express';
 import auth from '../middleware/auth.js';
+import checkRole from '../middleware/checkRole.js';
 import User from '../models/User.js';
 import Driver from '../models/Driver.js';
 import Vehicle from '../models/Vehicle.js';
@@ -8,9 +9,10 @@ import Ride from '../models/Ride.js';
 import Route from '../models/Route.js';
 
 const router = express.Router();
+const requireAdmin = checkRole(['admin']);
 
 // Dashboard stats
-router.get('/dashboard', auth, async (req, res) => {
+router.get('/dashboard', auth, requireAdmin, async (req, res) => {
   try {
     const totalUsers = await User.countDocuments({ role: 'user' });
     const activeSubscriptions = await Subscription.countDocuments({ active: true });
@@ -41,7 +43,7 @@ router.get('/dashboard', auth, async (req, res) => {
 });
 
 // User management
-router.get('/users', auth, async (req, res) => {
+router.get('/users', auth, requireAdmin, async (req, res) => {
   try {
     const users = await User.find({ role: 'user' })
       .select('-password')

@@ -14,10 +14,12 @@ import Profile from './pages/user/Profile';
 
 // Driver Pages
 import DriverLogin from './pages/driver/DriverLogin';
+import DriverRegister from './pages/driver/DriverRegister';
 import DriverDashboard from './pages/driver/DriverDashboard';
 
 // Admin Pages
 import AdminLogin from './pages/admin/AdminLogin';
+import AdminRegister from './pages/admin/AdminRegister';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagement from './pages/admin/UserManagement';
 import DriverManagement from './pages/admin/DriverManagement';
@@ -34,7 +36,9 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/driver/login" element={<DriverLogin />} />
+            <Route path="/driver/register" element={<DriverRegister />} />
             <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin/register" element={<AdminRegister />} />
             
             {/* User Protected Routes */}
             <Route path="/dashboard" element={

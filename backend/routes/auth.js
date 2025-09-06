@@ -9,12 +9,25 @@ const router = express.Router();
 // Get Logged in User
 router.get('/me', auth, async (req, res) => {
   try {
-    // Find user by id from token
-    const user = await User.findById(req.user.userId).select('-password');
+    let user;
+    const { userId, role } = req.user;
+
+    switch (role) {
+      case 'driver':
+        user = await Driver.findById(userId).select('-password');
+        break;
+      case 'admin':
+        user = await User.findOne({ _id: userId, role: 'admin' }).select('-password');
+        break;
+      default:
+        user = await User.findOne({ _id: userId, role: 'user' }).select('-password');
+    }
+
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    res.json({ user });
+
+    res.json({ user: { ...user.toObject(), role } });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -46,6 +59,72 @@ router.post('/register', async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Driver Registration
+router.post('/driver/register', async (req, res) => {
+  try {
+    const { name, email, password, phone } = req.body;
+    
+    const existingDriver = await Driver.findOne({ email });
+    if (existingDriver) {
+      return res.status(400).json({ error: 'Driver already exists' });
+    }
+
+    const driver = new Driver({ name, email, password, phone });
+    await driver.save();
+
+    const token = jwt.sign(
+      { userId: driver._id, role: 'driver' },
+      process.env.JWT_SECRET || 'fallback_secret',
+      { expiresIn: '7d' }
+    );
+
+    res.status(201).json({
+      token,
+      user: {
+        id: driver._id,
+        name: driver.name,
+        email: driver.email,
+        role: 'driver'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin Registration
+router.post('/admin/register', async (req, res) => {
+  try {
+    const { name, email, password, phone } = req.body;
+    
+    const existingAdmin = await User.findOne({ email, role: 'admin' });
+    if (existingAdmin) {
+      return res.status(400).json({ error: 'Admin already exists' });
+    }
+
+    const admin = new User({ name, email, password, phone, role: 'admin' });
+    await admin.save();
+
+    const token = jwt.sign(
+      { userId: admin._id, role: 'admin' },
+      process.env.JWT_SECRET || 'fallback_secret',
+      { expiresIn: '7d' }
+    );
+
+    res.status(201).json({
+      token,
+      user: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        role: 'admin'
       }
     });
   } catch (error) {
