@@ -1,12 +1,12 @@
 import express from 'express';
-import { authenticate } from '../middleware/auth.js';
+import auth from '../middleware/auth.js';
 import Ride from '../models/Ride.js';
 import Subscription from '../models/Subscription.js';
 
 const router = express.Router();
 
 // Get user rides
-router.get('/', authenticate, async (req, res) => {
+router.get('/', auth, async (req, res) => {
   try {
     const rides = await Ride.find({ user_id: req.user._id })
       .populate('subscription_id')
@@ -21,7 +21,7 @@ router.get('/', authenticate, async (req, res) => {
 });
 
 // Cancel ride
-router.put('/:id/cancel', authenticate, async (req, res) => {
+router.put('/:id/cancel', auth, async (req, res) => {
   try {
     const ride = await Ride.findOne({
       _id: req.params.id,
@@ -50,7 +50,7 @@ router.put('/:id/cancel', authenticate, async (req, res) => {
 });
 
 // Get today's rides
-router.get('/today', authenticate, async (req, res) => {
+router.get('/today', auth, async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);

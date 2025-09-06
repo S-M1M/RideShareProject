@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticate, authorize } from '../middleware/auth.js';
+import auth from '../middleware/auth.js';
 import User from '../models/User.js';
 import Driver from '../models/Driver.js';
 import Vehicle from '../models/Vehicle.js';
@@ -10,7 +10,7 @@ import Route from '../models/Route.js';
 const router = express.Router();
 
 // Dashboard stats
-router.get('/dashboard', authenticate, authorize('admin'), async (req, res) => {
+router.get('/dashboard', auth, async (req, res) => {
   try {
     const totalUsers = await User.countDocuments({ role: 'user' });
     const activeSubscriptions = await Subscription.countDocuments({ active: true });
@@ -41,7 +41,7 @@ router.get('/dashboard', authenticate, authorize('admin'), async (req, res) => {
 });
 
 // User management
-router.get('/users', authenticate, authorize('admin'), async (req, res) => {
+router.get('/users', auth, async (req, res) => {
   try {
     const users = await User.find({ role: 'user' })
       .select('-password')
@@ -53,7 +53,7 @@ router.get('/users', authenticate, authorize('admin'), async (req, res) => {
 });
 
 // Driver management
-router.get('/drivers', authenticate, authorize('admin'), async (req, res) => {
+router.get('/drivers', auth, async (req, res) => {
   try {
     const drivers = await Driver.find()
       .populate('assigned_vehicle_id')
@@ -66,7 +66,7 @@ router.get('/drivers', authenticate, authorize('admin'), async (req, res) => {
 });
 
 // Add driver
-router.post('/drivers', authenticate, authorize('admin'), async (req, res) => {
+router.post('/drivers', auth, async (req, res) => {
   try {
     const { name, email, password, phone, assigned_vehicle_id } = req.body;
     
@@ -91,7 +91,7 @@ router.post('/drivers', authenticate, authorize('admin'), async (req, res) => {
 });
 
 // Vehicle management
-router.get('/vehicles', authenticate, authorize('admin'), async (req, res) => {
+router.get('/vehicles', auth, async (req, res) => {
   try {
     const vehicles = await Vehicle.find().sort({ createdAt: -1 });
     res.json(vehicles);
@@ -101,7 +101,7 @@ router.get('/vehicles', authenticate, authorize('admin'), async (req, res) => {
 });
 
 // Add vehicle
-router.post('/vehicles', authenticate, authorize('admin'), async (req, res) => {
+router.post('/vehicles', auth, async (req, res) => {
   try {
     const { type, capacity, license_plate } = req.body;
     
@@ -119,7 +119,7 @@ router.post('/vehicles', authenticate, authorize('admin'), async (req, res) => {
 });
 
 // Route assignment
-router.post('/routes', authenticate, authorize('admin'), async (req, res) => {
+router.post('/routes', auth, async (req, res) => {
   try {
     const { driver_id, vehicle_id, date, passengers } = req.body;
     

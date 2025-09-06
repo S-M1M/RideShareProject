@@ -2,8 +2,23 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import Driver from '../models/Driver.js';
+import auth from '../middleware/auth.js';
 
 const router = express.Router();
+
+// Get Logged in User
+router.get('/me', auth, async (req, res) => {
+  try {
+    // Find user by id from token
+    const user = await User.findById(req.user.userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({ user });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // User Registration
 router.post('/register', async (req, res) => {

@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticate } from '../middleware/auth.js';
+import auth from '../middleware/auth.js';
 import User from '../models/User.js';
 import Subscription from '../models/Subscription.js';
 import Ride from '../models/Ride.js';
@@ -7,7 +7,7 @@ import Ride from '../models/Ride.js';
 const router = express.Router();
 
 // Get user profile
-router.get('/profile', authenticate, async (req, res) => {
+router.get('/profile', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('-password');
     res.json(user);
@@ -17,7 +17,7 @@ router.get('/profile', authenticate, async (req, res) => {
 });
 
 // Update user profile
-router.put('/profile', authenticate, async (req, res) => {
+router.put('/profile', auth, async (req, res) => {
   try {
     const { name, phone } = req.body;
     
@@ -34,7 +34,7 @@ router.put('/profile', authenticate, async (req, res) => {
 });
 
 // Get user stats
-router.get('/stats', authenticate, async (req, res) => {
+router.get('/stats', auth, async (req, res) => {
   try {
     const activeSubscriptions = await Subscription.countDocuments({
       user_id: req.user._id,

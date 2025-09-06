@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticate, authorize } from '../middleware/auth.js';
+import auth from '../middleware/auth.js';
 import Subscription from '../models/Subscription.js';
 import Ride from '../models/Ride.js';
 
@@ -18,7 +18,7 @@ const calculatePrice = (distance, planType) => {
 };
 
 // Create subscription
-router.post('/', authenticate, async (req, res) => {
+router.post('/', auth, async (req, res) => {
   try {
     const {
       plan_type,
@@ -93,7 +93,7 @@ const createRidesForSubscription = async (subscription) => {
 };
 
 // Get user subscriptions
-router.get('/', authenticate, async (req, res) => {
+router.get('/', auth, async (req, res) => {
   try {
     const subscriptions = await Subscription.find({ user_id: req.user._id })
       .sort({ createdAt: -1 });
@@ -104,7 +104,7 @@ router.get('/', authenticate, async (req, res) => {
 });
 
 // Cancel subscription
-router.put('/:id/cancel', authenticate, async (req, res) => {
+router.put('/:id/cancel', auth, async (req, res) => {
   try {
     const subscription = await Subscription.findOne({
       _id: req.params.id,
