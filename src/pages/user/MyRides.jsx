@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, DollarSign, ArrowRight } from 'lucide-react';
-
+import Layout from '../../components/Layout';
 const UserMap = () => {
   const [selectedPickup, setSelectedPickup] = useState('');
   const [selectedDrop, setSelectedDrop] = useState('');
@@ -117,6 +117,7 @@ const UserMap = () => {
   );
 
   return (
+    <Layout >
     <div className="max-w-4xl mx-auto p-6 bg-gray-50 min-h-screen">
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
 
@@ -266,6 +267,7 @@ const UserMap = () => {
         </div>
       </div>
     </div>
+    </Layout>
   );
 };
 
