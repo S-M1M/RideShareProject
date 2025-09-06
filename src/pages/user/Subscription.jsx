@@ -95,7 +95,7 @@ const RouteSubscription = () => {
   const calculatePrice = () => {
     if (!formData.pickupStop || !formData.dropStop || !formData.selectedRoute) return 0;
     
-    const basePrice = 150; // Base price per stop
+    const basePrice = 20; // Base price per stop
     const pickupIndex = formData.selectedRoute.stoppages.findIndex(s => s.id === formData.pickupStop.id);
     const dropIndex = formData.selectedRoute.stoppages.findIndex(s => s.id === formData.dropStop.id);
     const distance = Math.abs(dropIndex - pickupIndex);
@@ -140,7 +140,7 @@ const RouteSubscription = () => {
     const pickupIndex = formData.selectedRoute.stoppages.findIndex(s => s.id === formData.pickupStop.id);
     const dropIndex = formData.selectedRoute.stoppages.findIndex(s => s.id === formData.dropStop.id);
     const distance = Math.abs(dropIndex - pickupIndex);
-    const baseRatePerStop = 150;
+    const baseRatePerStop = 20;
     const totalStops = distance + 1;
     
     const planMultipliers = { daily: 1, weekly: 6, monthly: 25 };
@@ -422,11 +422,11 @@ const RouteSubscription = () => {
                     <div className="space-y-3 text-sm">
                       <div className="flex justify-between">
                         <span className="text-gray-600">Base Rate:</span>
-                        <span className="font-medium">৳{fareBreakdown.baseRatePerStop}/stop</span>
+                        <span className="font-medium">{fareBreakdown.baseRatePerStop} points /stop</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Single Trip:</span>
-                        <span className="font-medium">৳{fareBreakdown.baseAmount}</span>
+                        <span className="font-medium">{fareBreakdown.baseAmount} points</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Plan:</span>
@@ -435,12 +435,12 @@ const RouteSubscription = () => {
                       {fareBreakdown.savings > 0 && (
                         <div className="flex justify-between text-green-600">
                           <span>You Save:</span>
-                          <span className="font-semibold">৳{fareBreakdown.savings}</span>
+                          <span className="font-semibold">{fareBreakdown.savings} points</span>
                         </div>
                       )}
                       <div className="flex justify-between font-bold text-lg border-t pt-3 text-blue-700">
-                        <span>Total Price:</span>
-                        <span>৳{fareBreakdown.totalAmount.toFixed(2)}</span>
+                        <span>Total:</span>
+                        <span>{fareBreakdown.totalAmount} points</span>
                       </div>
                     </div>
                   </div>
