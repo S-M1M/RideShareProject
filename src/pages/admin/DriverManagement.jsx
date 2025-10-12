@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import Layout from '../../components/Layout';
-import { Plus, Search, Truck, Mail, Phone, Car } from 'lucide-react';
-
+import React, { useState, useEffect } from "react";
+import Layout from "../../components/Layout";
+import { Plus, Search, Truck, Mail, Phone, Car } from "lucide-react";
 
 const DriverManagement = () => {
   const [drivers, setDrivers] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,10 +15,10 @@ const DriverManagement = () => {
 
   const fetchDrivers = async () => {
     try {
-      const response = await api.get('/admin/drivers');
+      const response = await api.get("/admin/drivers");
       setDrivers(response.data);
     } catch (error) {
-      console.error('Error fetching drivers:', error);
+      console.error("Error fetching drivers:", error);
     } finally {
       setLoading(false);
     }
@@ -27,16 +26,17 @@ const DriverManagement = () => {
 
   const fetchVehicles = async () => {
     try {
-      const response = await api.get('/admin/vehicles');
+      const response = await api.get("/admin/vehicles");
       setVehicles(response.data);
     } catch (error) {
-      console.error('Error fetching vehicles:', error);
+      console.error("Error fetching vehicles:", error);
     }
   };
 
-  const filteredDrivers = drivers.filter(driver =>
-    driver.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    driver.email.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredDrivers = drivers.filter(
+    (driver) =>
+      driver.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      driver.email.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   if (loading) {
@@ -64,7 +64,7 @@ const DriverManagement = () => {
               className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
-          
+
           <button
             onClick={() => setShowAddModal(true)}
             className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
@@ -86,7 +86,9 @@ const DriverManagement = () => {
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold">{driver.name}</h3>
-                  <p className="text-sm text-gray-500">Driver ID: {driver._id.slice(-6)}</p>
+                  <p className="text-sm text-gray-500">
+                    Driver ID: {driver._id.slice(-6)}
+                  </p>
                 </div>
               </div>
 
@@ -102,10 +104,9 @@ const DriverManagement = () => {
                 <div className="flex items-center space-x-2">
                   <Car className="h-4 w-4 text-gray-400" />
                   <span>
-                    {driver.assigned_vehicle_id 
+                    {driver.assigned_vehicle_id
                       ? `${driver.assigned_vehicle_id.type} (${driver.assigned_vehicle_id.license_plate})`
-                      : 'No vehicle assigned'
-                    }
+                      : "No vehicle assigned"}
                   </span>
                 </div>
               </div>
@@ -146,11 +147,11 @@ const DriverManagement = () => {
 
 const AddDriverModal = ({ vehicles, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    phone: '',
-    assigned_vehicle_id: ''
+    name: "",
+    email: "",
+    password: "",
+    phone: "",
+    assigned_vehicle_id: "",
   });
   const [loading, setLoading] = useState(false);
 
@@ -159,10 +160,13 @@ const AddDriverModal = ({ vehicles, onClose, onSuccess }) => {
     setLoading(true);
 
     try {
-      await api.post('/admin/drivers', formData);
+      await api.post("/admin/drivers", formData);
       onSuccess();
     } catch (error) {
-      alert('Error adding driver: ' + (error.response?.data?.error || error.message));
+      alert(
+        "Error adding driver: " +
+          (error.response?.data?.error || error.message),
+      );
     } finally {
       setLoading(false);
     }
@@ -171,7 +175,7 @@ const AddDriverModal = ({ vehicles, onClose, onSuccess }) => {
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
@@ -179,7 +183,7 @@ const AddDriverModal = ({ vehicles, onClose, onSuccess }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg max-w-md w-full p-6">
         <h3 className="text-lg font-semibold mb-4">Add New Driver</h3>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -248,11 +252,14 @@ const AddDriverModal = ({ vehicles, onClose, onSuccess }) => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Select a vehicle</option>
-              {vehicles.filter(v => v.available).map((vehicle) => (
-                <option key={vehicle._id} value={vehicle._id}>
-                  {vehicle.type} - {vehicle.license_plate} (Capacity: {vehicle.capacity})
-                </option>
-              ))}
+              {vehicles
+                .filter((v) => v.available)
+                .map((vehicle) => (
+                  <option key={vehicle._id} value={vehicle._id}>
+                    {vehicle.type} - {vehicle.license_plate} (Capacity:{" "}
+                    {vehicle.capacity})
+                  </option>
+                ))}
             </select>
           </div>
 
@@ -269,7 +276,7 @@ const AddDriverModal = ({ vehicles, onClose, onSuccess }) => {
               disabled={loading}
               className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50"
             >
-              {loading ? 'Adding...' : 'Add Driver'}
+              {loading ? "Adding..." : "Add Driver"}
             </button>
           </div>
         </form>

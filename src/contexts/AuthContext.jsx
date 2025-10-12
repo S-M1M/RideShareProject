@@ -15,32 +15,35 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const loadUser = async () => {
-      const token = localStorage.getItem("token");
-      if (token) {
-        try {
-          const res = await api.get("/auth/me");
-          setUser(res.data.user);
-        } catch (err) {
-          console.error(err);
-          localStorage.removeItem("token");
-        }
+  const loadUser = async () => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const res = await api.get("/auth/me");
+        setUser(res.data.user);
+      } catch (err) {
+        console.error(err);
+        localStorage.removeItem("token");
       }
-      setLoading(false);
-    };
+    }
+    setLoading(false);
+  };
 
+  useEffect(() => {
     loadUser();
   }, []);
 
-  const login = async (credentials, role = 'user') => {
+  const login = async (credentials, role = "user") => {
     try {
-      const endpoint = role === 'driver' ? '/auth/driver/login' : 
-                      role === 'admin' ? '/auth/admin/login' : 
-                      '/auth/login';
+      const endpoint =
+        role === "driver"
+          ? "/auth/driver/login"
+          : role === "admin"
+            ? "/auth/admin/login"
+            : "/auth/login";
       const res = await api.post(endpoint, credentials);
       localStorage.setItem("token", res.data.token);
-      setUser(res.data.user);
+      await loadUser(); // Fetch user after login
       return { success: true };
     } catch (error) {
       return {
@@ -50,11 +53,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (userData, role = 'user') => {
+  const register = async (userData, role = "user") => {
     try {
-      const endpoint = role === 'driver' ? '/auth/driver/register' : 
-                      role === 'admin' ? '/auth/admin/register' : 
-                      '/auth/register';
+      const endpoint =
+        role === "driver"
+          ? "/auth/driver/register"
+          : role === "admin"
+            ? "/auth/admin/register"
+            : "/auth/register";
       const res = await api.post(endpoint, userData);
       localStorage.setItem("token", res.data.token);
       setUser(res.data.user);
@@ -78,6 +84,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     loading,
+    reloadUser: loadUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

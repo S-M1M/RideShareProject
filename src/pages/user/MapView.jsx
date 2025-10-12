@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { MapPin, Clock } from 'lucide-react';
-import Layout from '../../components/Layout';
+import React, { useEffect, useState } from "react";
+import { MapPin, Clock, CheckCircle } from "lucide-react";
+import Layout from "../../components/Layout";
+import { useAuth } from "../../contexts/AuthContext";
 // Mock data for routes and their stoppages
 const mockRoutes = [
   {
@@ -18,8 +19,8 @@ const mockRoutes = [
       { id: 5, name: "Tejgaon Industrial Area", lat: 23.7547, lng: 90.3914 },
       { id: 6, name: "Farmgate", lat: 23.7515, lng: 90.3896 },
       { id: 7, name: "Karwan Bazar", lat: 23.7502, lng: 90.3897 },
-      { id: 8, name: "Motijheel", lat: 23.7338, lng: 90.4065 }
-    ]
+      { id: 8, name: "Motijheel", lat: 23.7338, lng: 90.4065 },
+    ],
   },
   {
     id: 2,
@@ -38,8 +39,8 @@ const mockRoutes = [
       { id: 15, name: "Shahbagh", lat: 23.7389, lng: 90.3944 },
       { id: 16, name: "Matsya Bhaban", lat: 23.7542, lng: 90.3879 },
       { id: 17, name: "Airport Road", lat: 23.8103, lng: 90.4125 },
-      { id: 18, name: "Uttara Sector 3", lat: 23.8759, lng: 90.3795 }
-    ]
+      { id: 18, name: "Uttara Sector 3", lat: 23.8759, lng: 90.3795 },
+    ],
   },
   {
     id: 3,
@@ -57,37 +58,79 @@ const mockRoutes = [
       { id: 24, name: "Dhanmondi", lat: 23.7461, lng: 90.3742 },
       { id: 25, name: "New Market", lat: 23.7268, lng: 90.3804 },
       { id: 26, name: "Paltan", lat: 23.7347, lng: 90.4161 },
-      { id: 27, name: "Wari", lat: 23.7234, lng: 90.4289 }
-    ]
-  }
+      { id: 27, name: "Wari", lat: 23.7234, lng: 90.4289 },
+    ],
+  },
 ];
 
 const MapView = () => {
+  const { user } = useAuth();
   const [selectedRoute, setSelectedRoute] = useState(mockRoutes[0]);
   const [selectedStop, setSelectedStop] = useState(null);
   const [mapInstance, setMapInstance] = useState(null);
+  const [routeProgress, setRouteProgress] = useState({});
+
+  // Load route progress from localStorage
+  useEffect(() => {
+    const savedProgress = localStorage.getItem("routeProgress");
+    if (savedProgress) {
+      setRouteProgress(JSON.parse(savedProgress));
+    }
+  }, []);
+
+  // Save route progress to localStorage
+  const saveProgress = (progress) => {
+    setRouteProgress(progress);
+    localStorage.setItem("routeProgress", JSON.stringify(progress));
+  };
+
+  // Get current stop index for a route
+  const getCurrentStopIndex = (routeId) => {
+    return routeProgress[routeId]?.currentStopIndex || 0;
+  };
+
+  // Mark a stop as reached (driver only)
+  const markStopAsReached = (routeId, stopIndex) => {
+    if (user?.role !== "driver") return;
+
+    const newProgress = {
+      ...routeProgress,
+      [routeId]: {
+        currentStopIndex: stopIndex + 1,
+      },
+    };
+    saveProgress(newProgress);
+  };
+
+  // Get stop status
+  const getStopStatus = (routeId, stopIndex) => {
+    const currentIndex = getCurrentStopIndex(routeId);
+    if (stopIndex < currentIndex) return "completed";
+    if (stopIndex === currentIndex) return "current";
+    return "upcoming";
+  };
 
   // Initialize map
   useEffect(() => {
     const initMap = async () => {
-      const L = (await import('leaflet')).default;
-      
+      const L = (await import("leaflet")).default;
+
       // Import CSS
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
       document.head.appendChild(link);
 
       // Create map
-      const map = L.map('map', {
+      const map = L.map("map", {
         center: [23.7808, 90.4176], // Gulshan, Dhaka
         zoom: 12,
-        zoomControl: true
+        zoomControl: true,
       });
 
       // Add tile layer
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors",
       }).addTo(map);
 
       setMapInstance(map);
@@ -107,8 +150,8 @@ const MapView = () => {
     if (!mapInstance) return;
 
     const updateMap = async () => {
-      const L = (await import('leaflet')).default;
-      
+      const L = (await import("leaflet")).default;
+
       // Clear existing layers
       mapInstance.eachLayer((layer) => {
         if (layer instanceof L.Marker || layer instanceof L.Polyline) {
@@ -120,11 +163,18 @@ const MapView = () => {
       const markers = [];
       selectedRoute.stops.forEach((stop, index) => {
         const isSelected = selectedStop?.id === stop.id;
-        
+        const stopStatus = getStopStatus(selectedRoute.id, index);
+
+        // Define colors based on status
+        let backgroundColor = "#6B7280"; // Default gray
+        if (stopStatus === "completed") backgroundColor = "#10B981"; // Green
+        else if (stopStatus === "current") backgroundColor = "#EF4444"; // Red
+        else if (isSelected) backgroundColor = "#3B82F6"; // Blue
+
         // Create custom icon
         const iconHtml = `
           <div style="
-            background: ${isSelected ? '#3B82F6' : '#10B981'};
+            background: ${backgroundColor};
             border: 3px solid white;
             border-radius: 50%;
             width: 40px;
@@ -145,33 +195,55 @@ const MapView = () => {
           html: iconHtml,
           iconSize: [40, 40],
           iconAnchor: [20, 20],
-          className: 'custom-marker'
+          className: "custom-marker",
         });
 
-        const marker = L.marker([stop.lat, stop.lng], { icon: customIcon })
-          .addTo(mapInstance)
-          .bindPopup(`
+        const marker = L.marker([stop.lat, stop.lng], {
+          icon: customIcon,
+        }).addTo(mapInstance).bindPopup(`
             <div style="min-width: 200px;">
-              <h3 style="margin: 0 0 8px 0; font-weight: bold;">${stop.name}</h3>
-              <p style="margin: 0; color: #666;">Stop ${index + 1} of ${selectedRoute.stops.length}</p>
+              <h3 style="margin: 0 0 8px 0; font-weight: bold;">${
+                stop.name
+              }</h3>
+              <p style="margin: 0; color: #666;">Stop ${index + 1} of ${
+          selectedRoute.stops.length
+        }</p>
+              <p style="margin: 4px 0 0 0; color: ${
+                stopStatus === "completed"
+                  ? "#10B981"
+                  : stopStatus === "current"
+                  ? "#EF4444"
+                  : "#6B7280"
+              };">
+                Status: ${
+                  stopStatus === "completed"
+                    ? "Completed"
+                    : stopStatus === "current"
+                    ? "Current Stop"
+                    : "Upcoming"
+                }
+              </p>
             </div>
           `);
 
         markers.push(marker);
 
         // Add click event
-        marker.on('click', () => {
+        marker.on("click", () => {
           setSelectedStop(stop);
         });
       });
 
       // Create route line
-      const routeCoordinates = selectedRoute.stops.map(stop => [stop.lat, stop.lng]);
+      const routeCoordinates = selectedRoute.stops.map((stop) => [
+        stop.lat,
+        stop.lng,
+      ]);
       const routeLine = L.polyline(routeCoordinates, {
-        color: '#3B82F6',
+        color: "#3B82F6",
         weight: 4,
         opacity: 0.7,
-        dashArray: '10, 5'
+        dashArray: "10, 5",
       }).addTo(mapInstance);
 
       // Fit map to show all markers
@@ -180,114 +252,223 @@ const MapView = () => {
     };
 
     updateMap();
-  }, [mapInstance, selectedRoute, selectedStop]);
+  }, [mapInstance, selectedRoute, selectedStop, routeProgress]);
 
   return (
     <Layout>
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Route Explorer</h1>
-          <p className="text-gray-600">Explore different bus routes and their stops in Dhaka</p>
-        </div>
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-6">
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Route Explorer
+            </h1>
+            <p className="text-gray-600">
+              Explore different bus routes and their stops in Dhaka
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Route Selection Sidebar */}
-          <div className="lg:col-span-1 space-y-4">
-            <div className="bg-white rounded-lg shadow-md p-4">
-              <h2 className="text-xl font-semibold mb-4">Available Routes</h2>
-              <div className="space-y-3">
-                {mockRoutes.map((route) => (
-                  <button
-                    key={route.id}
-                    onClick={() => {
-                      setSelectedRoute(route);
-                      setSelectedStop(null);
-                    }}
-                    className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                      selectedRoute.id === route.id
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="font-medium text-gray-900 mb-1">{route.name}</div>
-                    <div className="text-sm text-gray-600 mb-2">{route.description}</div>
-                    <div className="flex items-center gap-4 text-xs text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <MapPin size={12} />
-                        {route.totalStops} stops
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock size={12} />
-                        {route.estimatedTime}
-                      </span>
-                      <span className="font-medium text-green-600">{route.fare}</span>
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Route Selection Sidebar */}
+            <div className="lg:col-span-1 space-y-4">
+              <div className="bg-white rounded-lg shadow-md p-4">
+                <h2 className="text-xl font-semibold mb-4">Available Routes</h2>
+                <div className="space-y-3">
+                  {mockRoutes.map((route) => (
+                    <button
+                      key={route.id}
+                      onClick={() => {
+                        setSelectedRoute(route);
+                        setSelectedStop(null);
+                      }}
+                      className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                        selectedRoute.id === route.id
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                      }`}
+                    >
+                      <div className="font-medium text-gray-900 mb-1">
+                        {route.name}
+                      </div>
+                      <div className="text-sm text-gray-600 mb-2">
+                        {route.description}
+                      </div>
+                      <div className="flex items-center gap-4 text-xs text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <MapPin size={12} />
+                          {route.totalStops} stops
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock size={12} />
+                          {route.estimatedTime}
+                        </span>
+                        <span className="font-medium text-green-600">
+                          {route.fare}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Selected Stop Details */}
+              {selectedStop && (
+                <div className="bg-white rounded-lg shadow-md p-4">
+                  <h3 className="text-lg font-semibold mb-3">Selected Stop</h3>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="text-blue-500" size={16} />
+                      <span className="font-medium">{selectedStop.name}</span>
                     </div>
-                  </button>
-                ))}
+                    <p className="text-sm text-gray-600">
+                      Stop{" "}
+                      {selectedRoute.stops.findIndex(
+                        (s) => s.id === selectedStop.id
+                      ) + 1}{" "}
+                      of {selectedRoute.stops.length}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Driver Controls */}
+              {user?.role === "driver" && (
+                <div className="bg-white rounded-lg shadow-md p-4">
+                  <h3 className="text-lg font-semibold mb-3">
+                    Driver Controls
+                  </h3>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      <span>Completed</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                      <span>Current Stop</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
+                      <span>Upcoming</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Route Progress Column */}
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h3 className="text-xl font-semibold mb-4">
+                  Route Progress - {selectedRoute.name}
+                </h3>
+                <div className="relative">
+                  {selectedRoute.stops.map((stop, index) => {
+                    const stopStatus = getStopStatus(selectedRoute.id, index);
+                    const isLast = index === selectedRoute.stops.length - 1;
+
+                    return (
+                      <div
+                        key={stop.id}
+                        className="relative flex items-start mb-6"
+                      >
+                        {/* Vertical Line */}
+                        {!isLast && (
+                          <div
+                            className={`absolute left-4 top-8 w-0.5 h-12 ${
+                              stopStatus === "completed"
+                                ? "bg-green-500"
+                                : "bg-gray-300"
+                            }`}
+                          />
+                        )}
+
+                        {/* Stop Marker */}
+                        <div className="flex-shrink-0 relative">
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium border-2 border-white shadow-md ${
+                              stopStatus === "completed"
+                                ? "bg-green-500"
+                                : stopStatus === "current"
+                                ? "bg-red-500"
+                                : "bg-gray-500"
+                            }`}
+                          >
+                            {stopStatus === "completed" ? (
+                              <CheckCircle size={16} />
+                            ) : (
+                              index + 1
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Stop Info */}
+                        <div className="ml-4 flex-grow">
+                          <button
+                            onClick={() => setSelectedStop(stop)}
+                            className={`text-left w-full p-3 rounded-lg border transition-all ${
+                              selectedStop?.id === stop.id
+                                ? "border-blue-500 bg-blue-50"
+                                : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                            }`}
+                          >
+                            <div className="font-medium text-gray-900 mb-1">
+                              {stop.name}
+                            </div>
+                            <div
+                              className={`text-sm ${
+                                stopStatus === "completed"
+                                  ? "text-green-600"
+                                  : stopStatus === "current"
+                                  ? "text-red-600"
+                                  : "text-gray-500"
+                              }`}
+                            >
+                              {stopStatus === "completed"
+                                ? "Completed"
+                                : stopStatus === "current"
+                                ? "Current Stop"
+                                : "Upcoming"}
+                            </div>
+                          </button>
+
+                          {/* Driver Action Button */}
+                          {user?.role === "driver" &&
+                            stopStatus === "current" && (
+                              <button
+                                onClick={() =>
+                                  markStopAsReached(selectedRoute.id, index)
+                                }
+                                className="mt-2 w-full px-3 py-2 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors"
+                              >
+                                Mark as Reached
+                              </button>
+                            )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
-            {/* Selected Stop Details */}
-            {selectedStop && (
-              <div className="bg-white rounded-lg shadow-md p-4">
-                <h3 className="text-lg font-semibold mb-3">Selected Stop</h3>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="text-blue-500" size={16} />
-                    <span className="font-medium">{selectedStop.name}</span>
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    Stop {selectedRoute.stops.findIndex(s => s.id === selectedStop.id) + 1} of {selectedRoute.stops.length}
+            {/* Map */}
+            <div className="lg:col-span-2">
+              <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                <div className="p-4 border-b bg-gray-50">
+                  <h3 className="text-lg font-semibold">
+                    {selectedRoute.name}
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {user?.role === "driver"
+                      ? "Click on stops in the progress column to mark them as reached"
+                      : "View real-time route progress"}
                   </p>
                 </div>
+                <div id="map" className="w-full h-[600px]"></div>
               </div>
-            )}
-          </div>
-
-          {/* Map */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="p-4 border-b bg-gray-50">
-                <h3 className="text-lg font-semibold">{selectedRoute.name}</h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  Click on any stop marker to view details
-                </p>
-              </div>
-              <div id="map" className="w-full h-[600px]"></div>
             </div>
-          </div>
-        </div>
-
-        {/* Stops List */}
-        <div className="mt-6 bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-xl font-semibold mb-4">All Stops - {selectedRoute.name}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {selectedRoute.stops.map((stop, index) => (
-              <button
-                key={stop.id}
-                onClick={() => setSelectedStop(stop)}
-                className={`text-left p-4 rounded-lg border-2 transition-all ${
-                  selectedStop?.id === stop.id
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex-shrink-0 w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-medium">
-                    {index + 1}
-                  </div>
-                  <div className="flex-grow min-w-0">
-                    <div className="font-medium text-gray-900">{stop.name}</div>
-                    <div className="text-sm text-gray-500">Stop {index + 1}</div>
-                  </div>
-                </div>
-              </button>
-            ))}
           </div>
         </div>
       </div>
-    </div>
     </Layout>
   );
 };

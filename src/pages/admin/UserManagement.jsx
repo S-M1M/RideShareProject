@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import Layout from '../../components/Layout';
-import { Search, User, Mail, Phone, Calendar } from 'lucide-react';
-
+import React, { useState, useEffect } from "react";
+import Layout from "../../components/Layout";
+import { Search, User, Mail, Phone, Calendar } from "lucide-react";
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -14,19 +13,20 @@ const UserManagement = () => {
   }, []);
 
   useEffect(() => {
-    const filtered = users.filter(user =>
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    const filtered = users.filter(
+      (user) =>
+        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase()),
     );
     setFilteredUsers(filtered);
   }, [users, searchTerm]);
 
   const fetchUsers = async () => {
     try {
-      const response = await api.get('/admin/users');
+      const response = await api.get("/admin/users");
       setUsers(response.data);
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error("Error fetching users:", error);
     } finally {
       setLoading(false);
     }
@@ -66,7 +66,7 @@ const UserManagement = () => {
               Users ({filteredUsers.length})
             </h3>
           </div>
-          
+
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -96,8 +96,12 @@ const UserManagement = () => {
                           </div>
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                          <div className="text-sm text-gray-500">ID: {user._id.slice(-6)}</div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {user.name}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            ID: {user._id.slice(-6)}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -114,7 +118,9 @@ const UserManagement = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center space-x-2 text-sm text-gray-600">
                         <Calendar className="h-4 w-4" />
-                        <span>{new Date(user.createdAt).toLocaleDateString()}</span>
+                        <span>
+                          {new Date(user.createdAt).toLocaleDateString()}
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -130,7 +136,7 @@ const UserManagement = () => {
               </tbody>
             </table>
           </div>
-          
+
           {filteredUsers.length === 0 && (
             <div className="text-center py-8">
               <p className="text-gray-500">No users found.</p>

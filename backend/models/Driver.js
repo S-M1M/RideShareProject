@@ -1,37 +1,37 @@
-import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
+import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 
 const driverSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: true
+    required: true,
   },
   email: {
     type: String,
     required: true,
-    unique: true
+    unique: true,
   },
   password: {
     type: String,
-    required: true
+    required: true,
   },
   phone: {
     type: String,
-    required: true
+    required: true,
   },
   assigned_vehicle_id: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Vehicle'
+    ref: "Vehicle",
   },
   createdAt: {
     type: Date,
-    default: Date.now
-  }
+    default: Date.now,
+  },
 });
 
-driverSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  
+driverSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
@@ -41,8 +41,8 @@ driverSchema.pre('save', async function(next) {
   }
 });
 
-driverSchema.methods.comparePassword = async function(candidatePassword) {
+driverSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-export default mongoose.model('Driver', driverSchema);
+export default mongoose.model("Driver", driverSchema);

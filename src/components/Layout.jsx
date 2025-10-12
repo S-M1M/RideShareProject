@@ -1,16 +1,16 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { 
-  Home, 
-  CreditCard, 
-  Car, 
-  Map, 
-  User, 
+import React from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import {
+  Home,
+  CreditCard,
+  Car,
+  Map,
+  User,
   LogOut,
   Menu,
-  X
-} from 'lucide-react';
+  X,
+} from "lucide-react";
 
 const Layout = ({ children, title }) => {
   const { user, logout } = useAuth();
@@ -18,38 +18,39 @@ const Layout = ({ children, title }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
   if (!user) {
-    navigate('/login');
+    navigate("/login");
     return null;
   }
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate("/login");
   };
 
   const getNavLinks = () => {
-    if (user?.role === 'driver') {
+    if (user?.role === "driver") {
       return [
-        { to: '/driver/dashboard', label: 'Dashboard', icon: Home }
+        { to: "/driver/dashboard", label: "Dashboard", icon: Home },
+        { to: "/map", label: "Map", icon: Map },
       ];
     }
-    
-    if (user?.role === 'admin') {
+
+    if (user?.role === "admin") {
       return [
-        { to: '/admin/dashboard', label: 'Dashboard', icon: Home },
-        { to: '/admin/users', label: 'Users', icon: User },
-        { to: '/admin/drivers', label: 'Drivers', icon: Car },
-        { to: '/admin/routes', label: 'Routes', icon: Map },
-        { to: '/admin/finance', label: 'Finance', icon: CreditCard }
+        { to: "/admin/dashboard", label: "Dashboard", icon: Home },
+        { to: "/admin/users", label: "Users", icon: User },
+        { to: "/admin/drivers", label: "Drivers", icon: Car },
+        { to: "/admin/routes", label: "Routes", icon: Map },
+        { to: "/admin/finance", label: "Finance", icon: CreditCard },
       ];
     }
 
     return [
-      { to: '/dashboard', label: 'Dashboard', icon: Home },
-      { to: '/subscription', label: 'Subscription', icon: CreditCard },
-      { to: '/rides', label: 'My Rides', icon: Car },
-      { to: '/map', label: 'Map', icon: Map },
-      { to: '/profile', label: 'Profile', icon: User }
+      { to: "/dashboard", label: "Dashboard", icon: Home },
+      { to: "/subscription", label: "Subscription", icon: CreditCard },
+      { to: "/rides", label: "My Rides", icon: Car },
+      { to: "/map", label: "Map", icon: Map },
+      { to: "/profile", label: "Profile", icon: User },
     ];
   };
 
@@ -62,9 +63,7 @@ const Layout = ({ children, title }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">
-                PickMeUp
-              </h1>
+              <h1 className="text-xl font-semibold text-gray-900">PickMeUp</h1>
             </div>
 
             {/* Desktop Navigation */}
@@ -79,7 +78,7 @@ const Layout = ({ children, title }) => {
                   <span>{label}</span>
                 </Link>
               ))}
-              
+
               <div className="flex items-center space-x-2 ml-4 pl-4 border-l">
                 <span className="text-sm text-gray-600">{user?.name}</span>
                 <button

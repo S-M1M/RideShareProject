@@ -1,42 +1,57 @@
-import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import React, { useState, useEffect } from "react";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Polyline,
+} from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 // Fix for the default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconRetinaUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+  iconUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
 });
 
 // Custom icons
 const pickupIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconUrl:
+    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png",
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
-  shadowSize: [41, 41]
+  shadowSize: [41, 41],
 });
 
 const dropIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconUrl:
+    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
-  shadowSize: [41, 41]
+  shadowSize: [41, 41],
 });
 
 const vehicleIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconUrl:
+    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
-  shadowSize: [41, 41]
+  shadowSize: [41, 41],
 });
 
 // Default center coordinates (Dhaka)
@@ -49,35 +64,41 @@ const RideMap = ({ ride }) => {
   useEffect(() => {
     const pickupCoords = [23.7576, 90.4208]; // Rampura
     const dropCoords = [23.7969, 90.4199]; // Notun Bazar
-    
+
     setRoutePath([pickupCoords, dropCoords]);
 
     // Set initial vehicle position
     if (ride?.currentLocation) {
-      setVehiclePosition([ride.currentLocation.latitude, ride.currentLocation.longitude]);
+      setVehiclePosition([
+        ride.currentLocation.latitude,
+        ride.currentLocation.longitude,
+      ]);
     } else {
       setVehiclePosition(pickupCoords);
     }
 
     // Simulate vehicle movement if ride is active
-    if (ride?.status === 'active') {
+    if (ride?.status === "active") {
       const interval = setInterval(() => {
-        setVehiclePosition(current => {
+        setVehiclePosition((current) => {
           if (!current) return pickupCoords;
-          
+
           const [currentLat, currentLng] = current;
           const latDiff = (dropCoords[0] - currentLat) * 0.1;
           const lngDiff = (dropCoords[1] - currentLng) * 0.1;
-          
+
           const newLat = currentLat + latDiff;
           const newLng = currentLng + lngDiff;
-          
+
           // Stop when close to destination
-          if (Math.abs(newLat - dropCoords[0]) < 0.001 && Math.abs(newLng - dropCoords[1]) < 0.001) {
+          if (
+            Math.abs(newLat - dropCoords[0]) < 0.001 &&
+            Math.abs(newLng - dropCoords[1]) < 0.001
+          ) {
             clearInterval(interval);
             return dropCoords;
           }
-          
+
           return [newLat, newLng];
         });
       }, 2000);
@@ -100,44 +121,52 @@ const RideMap = ({ ride }) => {
         <MapContainer
           center={vehiclePosition || defaultCenter}
           zoom={13}
-          style={{ height: '100%', width: '100%' }}
+          style={{ height: "100%", width: "100%" }}
         >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          
+
           {/* Pickup and Drop Markers */}
           {routePath.length > 0 && (
             <>
               <Marker position={routePath[0]} icon={pickupIcon}>
                 <Popup>
-                  <strong>Pickup Location</strong><br />
+                  <strong>Pickup Location</strong>
+                  <br />
                   Rampura, Dhaka
                 </Popup>
               </Marker>
               <Marker position={routePath[1]} icon={dropIcon}>
                 <Popup>
-                  <strong>Drop Location</strong><br />
+                  <strong>Drop Location</strong>
+                  <br />
                   Notun Bazar, Dhaka
                 </Popup>
               </Marker>
             </>
           )}
-          
+
           {/* Vehicle Marker */}
           {vehiclePosition && (
             <Marker position={vehiclePosition} icon={vehicleIcon}>
               <Popup>
-                <strong>Your Vehicle</strong><br />
+                <strong>Your Vehicle</strong>
+                <br />
                 Current Position
               </Popup>
             </Marker>
           )}
-          
+
           {/* Route Path */}
           {routePath.length > 1 && (
-            <Polyline positions={routePath} color="blue" weight={3} opacity={0.7} />
+            <Polyline
+              positions={routePath}
+              color="blue"
+              weight={3}
+              opacity={0.7}
+            />
           )}
         </MapContainer>
       </div>
@@ -148,12 +177,16 @@ const RideMap = ({ ride }) => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div>
             <p className="text-gray-600">Status</p>
-            <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-              ride?.status === 'active' ? 'bg-yellow-100 text-yellow-800' :
-              ride?.status === 'completed' ? 'bg-green-100 text-green-800' :
-              'bg-blue-100 text-blue-800'
-            }`}>
-              {ride?.status || 'Not Available'}
+            <span
+              className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                ride?.status === "active"
+                  ? "bg-yellow-100 text-yellow-800"
+                  : ride?.status === "completed"
+                    ? "bg-green-100 text-green-800"
+                    : "bg-blue-100 text-blue-800"
+              }`}
+            >
+              {ride?.status || "Not Available"}
             </span>
           </div>
           <div>

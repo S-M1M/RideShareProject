@@ -1,43 +1,43 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const rideSchema = new mongoose.Schema({
   user_id: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+    ref: "User",
+    required: true,
   },
   subscription_id: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Subscription',
-    required: true
+    ref: "Subscription",
+    required: true,
   },
   driver_id: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Driver'
+    ref: "Driver",
   },
   vehicle_id: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Vehicle'
+    ref: "Vehicle",
   },
   date: {
     type: Date,
-    required: true
+    required: true,
   },
   status: {
     type: String,
-    enum: ['scheduled', 'in_progress', 'completed', 'cancelled'],
-    default: 'scheduled'
+    enum: ["scheduled", "in_progress", "completed", "cancelled"],
+    default: "scheduled",
   },
   refund_amount: {
     type: Number,
-    default: 0
+    default: 0,
   },
   pickup_time: String,
   drop_time: String,
   createdAt: {
     type: Date,
-    default: Date.now
-  }
+    default: Date.now,
+  },
 });
 
-export default mongoose.model('Ride', rideSchema);
+export default mongoose.model("Ride", rideSchema);
