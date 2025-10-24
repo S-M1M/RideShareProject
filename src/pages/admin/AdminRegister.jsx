@@ -21,25 +21,12 @@ const AdminRegister = () => {
     setLoading(true);
     setError("");
 
-    try {
-      const response = await fetch("/api/auth/admin/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
+    const result = await register(formData, "admin");
 
-      const data = await response.json();
-
-      if (response.ok) {
-        localStorage.setItem("token", data.token);
-        navigate("/admin/dashboard");
-      } else {
-        setError(data.error);
-      }
-    } catch (error) {
-      setError("Registration failed. Please try again.");
+    if (result.success) {
+      navigate("/admin/dashboard");
+    } else {
+      setError(result.error);
     }
 
     setLoading(false);

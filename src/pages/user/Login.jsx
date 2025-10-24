@@ -53,7 +53,7 @@ const Login = () => {
               to="/register"
               className="font-medium text-blue-600 hover:text-blue-500"
             >
-              create a new account
+              Create a new account
             </Link>
           </p>
         </div>

@@ -18,12 +18,12 @@ router.get("/me", auth, async (req, res) => {
         break;
       case "admin":
         user = await User.findOne({ _id: userId, role: "admin" }).select(
-          "-password",
+          "-password"
         );
         break;
       default:
         user = await User.findOne({ _id: userId, role: "user" }).select(
-          "-password",
+          "-password"
         );
     }
 
@@ -53,7 +53,7 @@ router.post("/register", async (req, res) => {
     const token = jwt.sign(
       { userId: user._id, role: user.role },
       process.env.JWT_SECRET || "fallback_secret",
-      { expiresIn: "7d" },
+      { expiresIn: "7d" }
     );
 
     res.status(201).json({
@@ -86,7 +86,7 @@ router.post("/driver/register", async (req, res) => {
     const token = jwt.sign(
       { userId: driver._id, role: "driver" },
       process.env.JWT_SECRET || "fallback_secret",
-      { expiresIn: "7d" },
+      { expiresIn: "7d" }
     );
 
     res.status(201).json({
@@ -120,7 +120,7 @@ router.post("/admin/register", async (req, res) => {
     const token = jwt.sign(
       { userId: admin._id, role: "admin" },
       process.env.JWT_SECRET || "fallback_secret",
-      { expiresIn: "7d" },
+      { expiresIn: "7d" }
     );
 
     res.status(201).json({
@@ -155,7 +155,7 @@ router.post("/login", async (req, res) => {
     const token = jwt.sign(
       { userId: user._id, role: user.role },
       process.env.JWT_SECRET || "fallback_secret",
-      { expiresIn: "7d" },
+      { expiresIn: "7d" }
     );
 
     res.json({
@@ -178,7 +178,7 @@ router.post("/driver/login", async (req, res) => {
     const { email, password } = req.body;
 
     const driver = await Driver.findOne({ email }).populate(
-      "assigned_vehicle_id",
+      "assigned_vehicle_id"
     );
     if (!driver) {
       return res.status(400).json({ error: "Invalid credentials" });
@@ -192,7 +192,7 @@ router.post("/driver/login", async (req, res) => {
     const token = jwt.sign(
       { userId: driver._id, role: "driver" },
       process.env.JWT_SECRET || "fallback_secret",
-      { expiresIn: "7d" },
+      { expiresIn: "7d" }
     );
 
     res.json({
@@ -204,6 +204,42 @@ router.post("/driver/login", async (req, res) => {
         phone: driver.phone,
         vehicle: driver.assigned_vehicle_id,
         role: "driver",
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin Login
+router.post("/admin/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const admin = await User.findOne({ email, role: "admin" });
+    if (!admin) {
+      return res.status(400).json({ error: "Invalid credentials" });
+    }
+
+    const isMatch = await admin.comparePassword(password);
+    if (!isMatch) {
+      return res.status(400).json({ error: "Invalid credentials" });
+    }
+
+    const token = jwt.sign(
+      { userId: admin._id, role: "admin" },
+      process.env.JWT_SECRET || "fallback_secret",
+      { expiresIn: "7d" }
+    );
+
+    res.json({
+      token,
+      user: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        phone: admin.phone,
+        role: "admin",
       },
     });
   } catch (error) {
