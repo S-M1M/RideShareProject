@@ -4,6 +4,19 @@ const vehicleSchema = new mongoose.Schema({
   type: {
     type: String,
     required: true,
+    enum: ["bus", "van", "microbus", "sedan", "suv"],
+  },
+  model: {
+    type: String,
+    required: true,
+  },
+  year: {
+    type: Number,
+    required: true,
+  },
+  color: {
+    type: String,
+    required: true,
   },
   capacity: {
     type: Number,
@@ -17,6 +30,11 @@ const vehicleSchema = new mongoose.Schema({
   available: {
     type: Boolean,
     default: true,
+  },
+  status: {
+    type: String,
+    enum: ["active", "maintenance", "inactive"],
+    default: "active",
   },
   createdAt: {
     type: Date,

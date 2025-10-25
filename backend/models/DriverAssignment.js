@@ -23,13 +23,26 @@ const driverAssignmentSchema = new mongoose.Schema({
     type: Date,
     required: true,
   },
+  // NEW: Support for date ranges
+  startDate: {
+    type: Date,
+    required: true,
+  },
+  endDate: {
+    type: Date,
+    required: true,
+  },
+  recurringDays: {
+    type: [String], // ["monday", "tuesday", "wednesday", "thursday", "friday"]
+    default: [],
+  },
   currentStopIndex: {
     type: Number,
     default: 0,
   },
   status: {
     type: String,
-    enum: ["scheduled", "in-progress", "completed"],
+    enum: ["scheduled", "in-progress", "completed", "cancelled"],
     default: "scheduled",
   },
   completedStops: [

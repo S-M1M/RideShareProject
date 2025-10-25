@@ -21,6 +21,7 @@ import Profile from "./pages/user/Profile";
 import DriverLogin from "./pages/driver/DriverLogin";
 import DriverRegister from "./pages/driver/DriverRegister";
 import DriverDashboard from "./pages/driver/DriverDashboard";
+import DriverMapView from "./pages/driver/DriverMapView";
 
 // Admin Pages
 import AdminLogin from "./pages/admin/AdminLogin";
@@ -28,6 +29,7 @@ import AdminRegister from "./pages/admin/AdminRegister";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import UserManagement from "./pages/admin/UserManagement";
 import DriverManagement from "./pages/admin/DriverManagement";
+import VehicleManagement from "./pages/admin/VehicleManagement";
 import RouteAssignment from "./pages/admin/RouteAssignment";
 import Finance from "./pages/admin/Finance";
 
@@ -96,6 +98,14 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/driver/assignments/:id/map"
+              element={
+                <ProtectedRoute role="driver">
+                  <DriverMapView />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Admin Protected Routes */}
             <Route
@@ -119,6 +129,14 @@ function App() {
               element={
                 <ProtectedRoute role="admin">
                   <DriverManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/vehicles"
+              element={
+                <ProtectedRoute role="admin">
+                  <VehicleManagement />
                 </ProtectedRoute>
               }
             />

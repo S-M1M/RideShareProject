@@ -153,6 +153,14 @@ const AdminDashboard = () => {
           </button>
 
           <button
+            onClick={() => navigate("/admin/vehicles")}
+            className="bg-indigo-600 text-white rounded-lg p-4 hover:bg-indigo-700 transition-colors text-center"
+          >
+            <Car className="h-6 w-6 mx-auto mb-2" />
+            <span className="block font-medium">Manage Vehicles</span>
+          </button>
+
+          <button
             onClick={() => navigate("/admin/routes")}
             className="bg-yellow-600 text-white rounded-lg p-4 hover:bg-yellow-700 transition-colors text-center"
           >

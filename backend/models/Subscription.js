@@ -6,6 +6,16 @@ const subscriptionSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
+  driver_assignment_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "DriverAssignment",
+    required: false, // Optional for backward compatibility
+  },
+  preset_route_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "PresetRoute",
+    required: false, // Optional for backward compatibility
+  },
   plan_type: {
     type: String,
     enum: ["daily", "weekly", "monthly"],

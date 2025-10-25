@@ -106,19 +106,125 @@ router.get("/vehicles", auth, async (req, res) => {
   }
 });
 
+// Get single vehicle
+router.get("/vehicles/:id", auth, async (req, res) => {
+  try {
+    const vehicle = await Vehicle.findById(req.params.id);
+    if (!vehicle) {
+      return res.status(404).json({ error: "Vehicle not found" });
+    }
+    res.json(vehicle);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Add vehicle
 router.post("/vehicles", auth, async (req, res) => {
   try {
-    const { type, capacity, license_plate } = req.body;
+    const { type, model, year, color, capacity, license_plate, status } =
+      req.body;
+
+    // Check if vehicle with same license plate exists
+    const existingVehicle = await Vehicle.findOne({ license_plate });
+    if (existingVehicle) {
+      return res
+        .status(400)
+        .json({ error: "Vehicle with this license plate already exists" });
+    }
 
     const vehicle = new Vehicle({
       type,
+      model,
+      year,
+      color,
       capacity,
       license_plate,
+      status: status || "active",
     });
 
     await vehicle.save();
-    res.status(201).json({ message: "Vehicle added successfully" });
+    res.status(201).json({ message: "Vehicle added successfully", vehicle });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update vehicle
+router.put("/vehicles/:id", auth, async (req, res) => {
+  try {
+    const {
+      type,
+      model,
+      year,
+      color,
+      capacity,
+      license_plate,
+      available,
+      status,
+    } = req.body;
+
+    // If updating license plate, check if it's already in use by another vehicle
+    if (license_plate) {
+      const existingVehicle = await Vehicle.findOne({
+        license_plate,
+        _id: { $ne: req.params.id },
+      });
+      if (existingVehicle) {
+        return res
+          .status(400)
+          .json({ error: "Vehicle with this license plate already exists" });
+      }
+    }
+
+    const vehicle = await Vehicle.findByIdAndUpdate(
+      req.params.id,
+      { type, model, year, color, capacity, license_plate, available, status },
+      { new: true, runValidators: true }
+    );
+
+    if (!vehicle) {
+      return res.status(404).json({ error: "Vehicle not found" });
+    }
+
+    res.json({ message: "Vehicle updated successfully", vehicle });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete vehicle
+router.delete("/vehicles/:id", auth, async (req, res) => {
+  try {
+    // Check if vehicle is assigned to any driver
+    const assignedDriver = await Driver.findOne({
+      assigned_vehicle_id: req.params.id,
+    });
+    if (assignedDriver) {
+      return res.status(400).json({
+        error:
+          "Cannot delete vehicle. It is assigned to a driver. Please unassign it first.",
+      });
+    }
+
+    // Check if vehicle is in any active assignments
+    const activeAssignments = await DriverAssignment.find({
+      vehicle_id: req.params.id,
+      status: { $in: ["scheduled", "in-progress"] },
+    });
+    if (activeAssignments.length > 0) {
+      return res.status(400).json({
+        error: "Cannot delete vehicle. It has active assignments.",
+      });
+    }
+
+    const vehicle = await Vehicle.findByIdAndDelete(req.params.id);
+
+    if (!vehicle) {
+      return res.status(404).json({ error: "Vehicle not found" });
+    }
+
+    res.json({ message: "Vehicle deleted successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -197,7 +303,15 @@ router.get("/preset-routes/:id", auth, requireAdmin, async (req, res) => {
 // Create preset route
 router.post("/preset-routes", auth, requireAdmin, async (req, res) => {
   try {
-    const { name, description, startPoint, endPoint, stops, estimatedTime, fare } = req.body;
+    const {
+      name,
+      description,
+      startPoint,
+      endPoint,
+      stops,
+      estimatedTime,
+      fare,
+    } = req.body;
 
     const presetRoute = new PresetRoute({
       name,
@@ -210,7 +324,12 @@ router.post("/preset-routes", auth, requireAdmin, async (req, res) => {
     });
 
     await presetRoute.save();
-    res.status(201).json({ message: "Preset route created successfully", route: presetRoute });
+    res
+      .status(201)
+      .json({
+        message: "Preset route created successfully",
+        route: presetRoute,
+      });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -219,11 +338,29 @@ router.post("/preset-routes", auth, requireAdmin, async (req, res) => {
 // Update preset route
 router.put("/preset-routes/:id", auth, requireAdmin, async (req, res) => {
   try {
-    const { name, description, startPoint, endPoint, stops, estimatedTime, fare, active } = req.body;
+    const {
+      name,
+      description,
+      startPoint,
+      endPoint,
+      stops,
+      estimatedTime,
+      fare,
+      active,
+    } = req.body;
 
     const presetRoute = await PresetRoute.findByIdAndUpdate(
       req.params.id,
-      { name, description, startPoint, endPoint, stops, estimatedTime, fare, active },
+      {
+        name,
+        description,
+        startPoint,
+        endPoint,
+        stops,
+        estimatedTime,
+        fare,
+        active,
+      },
       { new: true }
     );
 
@@ -231,7 +368,10 @@ router.put("/preset-routes/:id", auth, requireAdmin, async (req, res) => {
       return res.status(404).json({ error: "Preset route not found" });
     }
 
-    res.json({ message: "Preset route updated successfully", route: presetRoute });
+    res.json({
+      message: "Preset route updated successfully",
+      route: presetRoute,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -241,7 +381,7 @@ router.put("/preset-routes/:id", auth, requireAdmin, async (req, res) => {
 router.delete("/preset-routes/:id", auth, requireAdmin, async (req, res) => {
   try {
     const presetRoute = await PresetRoute.findByIdAndDelete(req.params.id);
-    
+
     if (!presetRoute) {
       return res.status(404).json({ error: "Preset route not found" });
     }
@@ -258,7 +398,7 @@ router.get("/driver-assignments", auth, requireAdmin, async (req, res) => {
   try {
     const { date } = req.query;
     let query = {};
-    
+
     if (date) {
       const startDate = new Date(date);
       const endDate = new Date(date);
@@ -271,7 +411,7 @@ router.get("/driver-assignments", auth, requireAdmin, async (req, res) => {
       .populate("presetRoute_id")
       .populate("vehicle_id")
       .sort({ scheduledDate: -1, scheduledStartTime: 1 });
-    
+
     res.json(assignments);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -281,7 +421,13 @@ router.get("/driver-assignments", auth, requireAdmin, async (req, res) => {
 // Assign route to driver
 router.post("/driver-assignments", auth, requireAdmin, async (req, res) => {
   try {
-    const { driver_id, presetRoute_id, vehicle_id, scheduledStartTime, scheduledDate } = req.body;
+    const {
+      driver_id,
+      presetRoute_id,
+      vehicle_id,
+      scheduledStartTime,
+      scheduledDate,
+    } = req.body;
 
     // Check if driver exists
     const driver = await Driver.findById(driver_id);
@@ -304,15 +450,15 @@ router.post("/driver-assignments", auth, requireAdmin, async (req, res) => {
     });
 
     await assignment.save();
-    
+
     const populatedAssignment = await DriverAssignment.findById(assignment._id)
       .populate("driver_id", "name email")
       .populate("presetRoute_id")
       .populate("vehicle_id");
 
-    res.status(201).json({ 
-      message: "Route assigned to driver successfully", 
-      assignment: populatedAssignment 
+    res.status(201).json({
+      message: "Route assigned to driver successfully",
+      assignment: populatedAssignment,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -344,18 +490,25 @@ router.put("/driver-assignments/:id", auth, requireAdmin, async (req, res) => {
 });
 
 // Delete driver assignment
-router.delete("/driver-assignments/:id", auth, requireAdmin, async (req, res) => {
-  try {
-    const assignment = await DriverAssignment.findByIdAndDelete(req.params.id);
-    
-    if (!assignment) {
-      return res.status(404).json({ error: "Assignment not found" });
-    }
+router.delete(
+  "/driver-assignments/:id",
+  auth,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const assignment = await DriverAssignment.findByIdAndDelete(
+        req.params.id
+      );
 
-    res.json({ message: "Assignment deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+      if (!assignment) {
+        return res.status(404).json({ error: "Assignment not found" });
+      }
+
+      res.json({ message: "Assignment deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
   }
-});
+);
 
 export default router;
