@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Layout from "../../components/Layout";
 import { Users, Car, Calendar, DollarSign, Truck, MapPin } from "lucide-react";
+import api from "../../utils/api";
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
 
@@ -133,37 +136,37 @@ const AdminDashboard = () => {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <a
-            href="/admin/users"
+          <button
+            onClick={() => navigate("/admin/users")}
             className="bg-blue-600 text-white rounded-lg p-4 hover:bg-blue-700 transition-colors text-center"
           >
             <Users className="h-6 w-6 mx-auto mb-2" />
             <span className="block font-medium">Manage Users</span>
-          </a>
+          </button>
 
-          <a
-            href="/admin/drivers"
+          <button
+            onClick={() => navigate("/admin/drivers")}
             className="bg-green-600 text-white rounded-lg p-4 hover:bg-green-700 transition-colors text-center"
           >
             <Truck className="h-6 w-6 mx-auto mb-2" />
             <span className="block font-medium">Manage Drivers</span>
-          </a>
+          </button>
 
-          <a
-            href="/admin/routes"
+          <button
+            onClick={() => navigate("/admin/routes")}
             className="bg-yellow-600 text-white rounded-lg p-4 hover:bg-yellow-700 transition-colors text-center"
           >
             <MapPin className="h-6 w-6 mx-auto mb-2" />
             <span className="block font-medium">Route Assignment</span>
-          </a>
+          </button>
 
-          <a
-            href="/admin/finance"
+          <button
+            onClick={() => navigate("/admin/finance")}
             className="bg-purple-600 text-white rounded-lg p-4 hover:bg-purple-700 transition-colors text-center"
           >
             <DollarSign className="h-6 w-6 mx-auto mb-2" />
             <span className="block font-medium">Financial Overview</span>
-          </a>
+          </button>
         </div>
 
         {/* Recent Activity */}

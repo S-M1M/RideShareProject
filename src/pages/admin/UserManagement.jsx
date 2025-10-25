@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Layout from "../../components/Layout";
 import { Search, User, Mail, Phone, Calendar } from "lucide-react";
+import api from "../../utils/api";
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);

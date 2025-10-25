@@ -1,6 +1,8 @@
 import express from "express";
+import jwt from "jsonwebtoken";
 import Route from "../models/Route.js";
 import Driver from "../models/Driver.js";
+import DriverAssignment from "../models/DriverAssignment.js";
 
 const router = express.Router();
 
@@ -67,6 +69,109 @@ router.put("/routes/:id/status", authenticateDriver, async (req, res) => {
     }
 
     res.json(route);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get driver's assignments for a specific date
+router.get("/assignments", authenticateDriver, async (req, res) => {
+  try {
+    const { date } = req.query;
+    let query = { driver_id: req.driver._id };
+    
+    if (date) {
+      const startDate = new Date(date);
+      const endDate = new Date(date);
+      endDate.setHours(23, 59, 59, 999);
+      query.scheduledDate = { $gte: startDate, $lte: endDate };
+    } else {
+      // Default to today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      query.scheduledDate = { $gte: today, $lt: tomorrow };
+    }
+
+    const assignments = await DriverAssignment.find(query)
+      .populate("presetRoute_id")
+      .populate("vehicle_id")
+      .sort({ scheduledStartTime: 1 });
+
+    res.json(assignments);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update assignment progress (mark stop as reached)
+router.put("/assignments/:id/progress", authenticateDriver, async (req, res) => {
+  try {
+    const { stopIndex } = req.body;
+
+    const assignment = await DriverAssignment.findOne({
+      _id: req.params.id,
+      driver_id: req.driver._id,
+    }).populate("presetRoute_id");
+
+    if (!assignment) {
+      return res.status(404).json({ error: "Assignment not found" });
+    }
+
+    // Update current stop index
+    assignment.currentStopIndex = stopIndex + 1;
+    
+    // Add to completed stops
+    assignment.completedStops.push({
+      stopIndex,
+      completedAt: new Date(),
+    });
+
+    // Update status
+    const totalStops = assignment.presetRoute_id.stops.length + 2; // +2 for start and end
+    if (assignment.currentStopIndex >= totalStops) {
+      assignment.status = "completed";
+    } else if (assignment.status === "scheduled") {
+      assignment.status = "in-progress";
+    }
+
+    await assignment.save();
+
+    const updatedAssignment = await DriverAssignment.findById(assignment._id)
+      .populate("presetRoute_id")
+      .populate("vehicle_id");
+
+    res.json(updatedAssignment);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Reset assignment for next day
+router.post("/assignments/:id/reset", authenticateDriver, async (req, res) => {
+  try {
+    const assignment = await DriverAssignment.findOne({
+      _id: req.params.id,
+      driver_id: req.driver._id,
+    });
+
+    if (!assignment) {
+      return res.status(404).json({ error: "Assignment not found" });
+    }
+
+    // Reset progress
+    assignment.currentStopIndex = 0;
+    assignment.completedStops = [];
+    assignment.status = "scheduled";
+
+    await assignment.save();
+
+    const updatedAssignment = await DriverAssignment.findById(assignment._id)
+      .populate("presetRoute_id")
+      .populate("vehicle_id");
+
+    res.json({ message: "Assignment reset successfully", assignment: updatedAssignment });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Layout from "../../components/Layout";
 import { DollarSign, TrendingUp, CreditCard, RefreshCcw } from "lucide-react";
+import api from "../../utils/api";
 
 const Finance = () => {
   const [financialData, setFinancialData] = useState({

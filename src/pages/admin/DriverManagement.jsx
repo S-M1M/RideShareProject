@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from "react";
 import Layout from "../../components/Layout";
-import { Plus, Search, Truck, Mail, Phone, Car } from "lucide-react";
+import { Plus, Search, Truck, Mail, Phone, Car, MapPin, Clock, X } from "lucide-react";
+import api from "../../utils/api";
 
 const DriverManagement = () => {
   const [drivers, setDrivers] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedDriver, setSelectedDriver] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -112,11 +115,17 @@ const DriverManagement = () => {
               </div>
 
               <div className="mt-4 flex space-x-2">
+                <button 
+                  onClick={() => {
+                    setSelectedDriver(driver);
+                    setShowAssignModal(true);
+                  }}
+                  className="flex-1 bg-green-100 text-green-700 px-3 py-1 rounded-md hover:bg-green-200 text-sm"
+                >
+                  Assign Route
+                </button>
                 <button className="flex-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-md hover:bg-blue-200 text-sm">
                   Edit
-                </button>
-                <button className="flex-1 bg-red-100 text-red-700 px-3 py-1 rounded-md hover:bg-red-200 text-sm">
-                  Remove
                 </button>
               </div>
             </div>
@@ -138,6 +147,22 @@ const DriverManagement = () => {
           onSuccess={() => {
             setShowAddModal(false);
             fetchDrivers();
+          }}
+        />
+      )}
+
+      {/* Assign Route Modal */}
+      {showAssignModal && selectedDriver && (
+        <AssignRouteModal
+          driver={selectedDriver}
+          vehicles={vehicles}
+          onClose={() => {
+            setShowAssignModal(false);
+            setSelectedDriver(null);
+          }}
+          onSuccess={() => {
+            setShowAssignModal(false);
+            setSelectedDriver(null);
           }}
         />
       )}
@@ -280,6 +305,200 @@ const AddDriverModal = ({ vehicles, onClose, onSuccess }) => {
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+};
+
+const AssignRouteModal = ({ driver, vehicles, onClose, onSuccess }) => {
+  const [presetRoutes, setPresetRoutes] = useState([]);
+  const [formData, setFormData] = useState({
+    presetRoute_id: "",
+    vehicle_id: driver.assigned_vehicle_id?._id || "",
+    scheduledStartTime: "08:00",
+    scheduledDate: new Date().toISOString().split("T")[0],
+  });
+  const [loading, setLoading] = useState(false);
+  const [loadingRoutes, setLoadingRoutes] = useState(true);
+
+  useEffect(() => {
+    fetchPresetRoutes();
+  }, []);
+
+  const fetchPresetRoutes = async () => {
+    try {
+      const response = await api.get("/admin/preset-routes");
+      setPresetRoutes(response.data.filter((r) => r.active));
+    } catch (error) {
+      console.error("Error fetching preset routes:", error);
+    } finally {
+      setLoadingRoutes(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      await api.post("/admin/driver-assignments", {
+        driver_id: driver._id,
+        ...formData,
+      });
+      alert("Route assigned successfully!");
+      onSuccess();
+    } catch (error) {
+      alert(
+        "Error assigning route: " +
+          (error.response?.data?.error || error.message)
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const selectedRoute = presetRoutes.find((r) => r._id === formData.presetRoute_id);
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Assign Route to {driver.name}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X size={24} />
+          </button>
+        </div>
+
+        {loadingRoutes ? (
+          <div className="text-center py-8">Loading routes...</div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Select Preset Route *
+              </label>
+              <select
+                name="presetRoute_id"
+                value={formData.presetRoute_id}
+                onChange={handleChange}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Choose a route</option>
+                {presetRoutes.map((route) => (
+                  <option key={route._id} value={route._id}>
+                    {route.name} - {route.stops.length} stops ({route.estimatedTime})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {selectedRoute && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-semibold mb-2 flex items-center">
+                  <MapPin size={16} className="mr-2" />
+                  Route Details
+                </h4>
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <span className="text-gray-600">From:</span>{" "}
+                    <span className="font-medium">{selectedRoute.startPoint.name}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">To:</span>{" "}
+                    <span className="font-medium">{selectedRoute.endPoint.name}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Stops:</span>{" "}
+                    <span className="font-medium">{selectedRoute.stops.length} intermediate stops</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Fare:</span>{" "}
+                    <span className="font-medium text-green-600">{selectedRoute.fare}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Select Vehicle *
+              </label>
+              <select
+                name="vehicle_id"
+                value={formData.vehicle_id}
+                onChange={handleChange}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Choose a vehicle</option>
+                {vehicles
+                  .filter((v) => v.available)
+                  .map((vehicle) => (
+                    <option key={vehicle._id} value={vehicle._id}>
+                      {vehicle.type} - {vehicle.license_plate} (Capacity:{" "}
+                      {vehicle.capacity})
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Scheduled Date *
+                </label>
+                <input
+                  type="date"
+                  name="scheduledDate"
+                  value={formData.scheduledDate}
+                  onChange={handleChange}
+                  required
+                  min={new Date().toISOString().split("T")[0]}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Start Time *
+                </label>
+                <input
+                  type="time"
+                  name="scheduledStartTime"
+                  value={formData.scheduledStartTime}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex space-x-3 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
+                {loading ? "Assigning..." : "Assign Route"}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
