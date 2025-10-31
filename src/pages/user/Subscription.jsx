@@ -73,6 +73,8 @@ const RouteSubscription = () => {
       setStarsBalance(response.data.stars);
     } catch (error) {
       console.error("Error fetching stars balance:", error);
+      console.error("Error response:", error.response?.data);
+      console.error("Error status:", error.response?.status);
       // Set default stars to 0 if there's an error
       setStarsBalance(0);
     }
@@ -89,8 +91,11 @@ const RouteSubscription = () => {
   const fetchPresetRoutes = async () => {
     setLoadingRoutes(true);
     try {
+      console.log("Fetching routes from API...");
       const response = await api.get("/users/routes");
       const presetRoutes = response.data;
+      
+      console.log("Routes fetched successfully:", presetRoutes.length);
 
       // Transform preset routes to match the expected format
       const transformedRoutes = presetRoutes
@@ -143,9 +148,11 @@ const RouteSubscription = () => {
           };
         });
 
+      console.log("Transformed routes:", transformedRoutes.length);
       setRoutes(transformedRoutes);
     } catch (error) {
       console.error("Error fetching preset routes:", error);
+      
       // More detailed error handling
       if (error.response) {
         // Server responded with error status
@@ -154,14 +161,24 @@ const RouteSubscription = () => {
           error.response.status,
           error.response.data
         );
+        
+        // Show user-friendly error message
+        if (error.response.status === 404) {
+          console.error("Routes endpoint not found - Check API URL");
+        } else if (error.response.status === 500) {
+          console.error("Server error - Check backend logs");
+        }
       } else if (error.request) {
         // Request made but no response
-        console.error("No response from server");
+        console.error("No response from server - Check if backend is running");
+        console.error("Request details:", error.request);
       } else {
         // Something else happened
         console.error("Error:", error.message);
       }
-      // Don't show alert immediately - let the UI handle the empty state
+      
+      // Set empty routes array to show "no routes" message
+      setRoutes([]);
     } finally {
       setLoadingRoutes(false);
     }
