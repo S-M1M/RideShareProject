@@ -12,86 +12,6 @@ import {
   addUserSubscription,
 } from "../../utils/subscriptionStorage";
 
-// Mock data for routes and stoppages
-const mockRoutes = [
-  {
-    _id: "route_1",
-    name: "Dhaka University - Uttara",
-    description: "Main city route covering major commercial areas",
-    stoppages: [
-      { _id: "stop_1", name: "Dhaka University", lat: 23.7361, lng: 90.3922 },
-      { _id: "stop_2", name: "New Market", lat: 23.7264, lng: 90.3854 },
-      { _id: "stop_3", name: "Dhanmondi 32", lat: 23.7461, lng: 90.3742 },
-      { _id: "stop_4", name: "Panthapath", lat: 23.7515, lng: 90.3944 },
-      { _id: "stop_5", name: "Farmgate", lat: 23.7574, lng: 90.3888 },
-      { _id: "stop_6", name: "Karwan Bazar", lat: 23.7508, lng: 90.3915 },
-      { _id: "stop_7", name: "Mohakhali", lat: 23.7806, lng: 90.4083 },
-      { _id: "stop_8", name: "Banani", lat: 23.7939, lng: 90.4067 },
-      { _id: "stop_9", name: "Uttara Sector 7", lat: 23.8759, lng: 90.3795 },
-    ],
-    timeSlots: [
-      "07:00 AM",
-      "07:30 AM",
-      "08:00 AM",
-      "08:30 AM",
-      "09:00 AM",
-      "05:00 PM",
-      "05:30 PM",
-      "06:00 PM",
-    ],
-  },
-  {
-    _id: "route_2",
-    name: "Mirpur - Motijheel",
-    description: "Business district connector route",
-    stoppages: [
-      { _id: "stop_10", name: "Mirpur 1", lat: 23.7956, lng: 90.3537 },
-      { _id: "stop_11", name: "Mirpur 10", lat: 23.8067, lng: 90.3685 },
-      { _id: "stop_12", name: "Kazipara", lat: 23.7853, lng: 90.3642 },
-      { _id: "stop_13", name: "Shyamoli", lat: 23.7686, lng: 90.3598 },
-      { _id: "stop_14", name: "Kalabagan", lat: 23.742, lng: 90.3856 },
-      { _id: "stop_15", name: "Shahbagh", lat: 23.7386, lng: 90.395 },
-      { _id: "stop_16", name: "Press Club", lat: 23.7336, lng: 90.4086 },
-      { _id: "stop_17", name: "Motijheel", lat: 23.733, lng: 90.4172 },
-    ],
-    timeSlots: [
-      "06:45 AM",
-      "07:15 AM",
-      "07:45 AM",
-      "08:15 AM",
-      "08:45 AM",
-      "04:45 PM",
-      "05:15 PM",
-      "05:45 PM",
-    ],
-  },
-  {
-    _id: "route_3",
-    name: "Gulshan - Old Dhaka",
-    description: "Heritage and modern area connector",
-    stoppages: [
-      { _id: "stop_18", name: "Gulshan 1", lat: 23.7806, lng: 90.4178 },
-      { _id: "stop_19", name: "Gulshan 2", lat: 23.7925, lng: 90.4156 },
-      { _id: "stop_20", name: "Badda", lat: 23.7806, lng: 90.4281 },
-      { _id: "stop_21", name: "Rampura", lat: 23.7583, lng: 90.4289 },
-      { _id: "stop_22", name: "Malibagh", lat: 23.7489, lng: 90.4181 },
-      { _id: "stop_23", name: "Ramna", lat: 23.7378, lng: 90.4028 },
-      { _id: "stop_24", name: "Paltan", lat: 23.7311, lng: 90.4144 },
-      { _id: "stop_25", name: "Sadarghat", lat: 23.7058, lng: 90.4064 },
-    ],
-    timeSlots: [
-      "07:30 AM",
-      "08:00 AM",
-      "08:30 AM",
-      "09:00 AM",
-      "09:30 AM",
-      "05:00 PM",
-      "05:30 PM",
-      "06:00 PM",
-    ],
-  },
-];
-
 const MapComponent = ({ selectedRoute, selectedStoppages }) => {
   return (
     <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
@@ -126,6 +46,8 @@ const RouteSubscription = () => {
   const [routes, setRoutes] = useState([]);
   const [userSubscriptions, setUserSubscriptions] = useState([]);
   const [starsBalance, setStarsBalance] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [loadingRoutes, setLoadingRoutes] = useState(true);
   const [formData, setFormData] = useState({
     selectedRoute: null,
     selectedTimeSlot: "",
@@ -133,7 +55,6 @@ const RouteSubscription = () => {
     dropStop: null,
     planType: "monthly",
   });
-  const [loading, setLoading] = useState(false);
 
   // Function to calculate stars cost based on plan type
   const calculateStarsCost = (planType) => {
@@ -152,6 +73,8 @@ const RouteSubscription = () => {
       setStarsBalance(response.data.stars);
     } catch (error) {
       console.error("Error fetching stars balance:", error);
+      // Set default stars to 0 if there's an error
+      setStarsBalance(0);
     }
   };
 
@@ -160,6 +83,88 @@ const RouteSubscription = () => {
     if (!user) return [];
     const userId = user._id || user.id;
     return getUserSubscriptions(userId);
+  };
+
+  // Fetch preset routes from API
+  const fetchPresetRoutes = async () => {
+    setLoadingRoutes(true);
+    try {
+      const response = await api.get("/users/routes");
+      const presetRoutes = response.data;
+
+      // Transform preset routes to match the expected format
+      const transformedRoutes = presetRoutes
+        .filter((route) => route.active) // Only show active routes
+        .map((route) => {
+          // Combine startPoint, stops, and endPoint into stoppages array
+          const stoppages = [
+            {
+              _id: `start_${route._id}`,
+              name: route.startPoint.name,
+              lat: route.startPoint.lat,
+              lng: route.startPoint.lng,
+            },
+            ...route.stops
+              .sort((a, b) => a.order - b.order)
+              .map((stop, index) => ({
+                _id: `stop_${route._id}_${index}`,
+                name: stop.name,
+                lat: stop.lat,
+                lng: stop.lng,
+              })),
+            {
+              _id: `end_${route._id}`,
+              name: route.endPoint.name,
+              lat: route.endPoint.lat,
+              lng: route.endPoint.lng,
+            },
+          ];
+
+          // Generate default time slots (can be customized based on route)
+          const timeSlots = [
+            "07:00 AM",
+            "07:30 AM",
+            "08:00 AM",
+            "08:30 AM",
+            "09:00 AM",
+            "05:00 PM",
+            "05:30 PM",
+            "06:00 PM",
+          ];
+
+          return {
+            _id: route._id,
+            name: route.name,
+            description: route.description,
+            stoppages,
+            timeSlots,
+            estimatedTime: route.estimatedTime,
+            fare: route.fare,
+          };
+        });
+
+      setRoutes(transformedRoutes);
+    } catch (error) {
+      console.error("Error fetching preset routes:", error);
+      // More detailed error handling
+      if (error.response) {
+        // Server responded with error status
+        console.error(
+          "Server error:",
+          error.response.status,
+          error.response.data
+        );
+      } else if (error.request) {
+        // Request made but no response
+        console.error("No response from server");
+      } else {
+        // Something else happened
+        console.error("Error:", error.message);
+      }
+      // Don't show alert immediately - let the UI handle the empty state
+    } finally {
+      setLoadingRoutes(false);
+    }
   };
 
   // Debug: Log user object to see its structure
@@ -172,7 +177,9 @@ const RouteSubscription = () => {
   }, [user]);
 
   useEffect(() => {
-    setRoutes(mockRoutes);
+    // Fetch preset routes from API
+    fetchPresetRoutes();
+
     // Load user's existing subscriptions
     if (user) {
       const subscriptions = loadUserSubscriptions();
@@ -535,42 +542,62 @@ const RouteSubscription = () => {
               <h3 className="text-xl font-semibold text-gray-800">
                 Choose Your Route
               </h3>
-              <div className="space-y-4">
-                {routes.map((route) => (
-                  <div
-                    key={route._id}
-                    onClick={() => handleRouteSelect(route)}
-                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all duration-200 ${
-                      formData.selectedRoute?._id === route._id
-                        ? "border-blue-600 bg-blue-50 shadow-md"
-                        : "border-gray-300 hover:border-blue-400 hover:shadow-sm"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="font-semibold text-lg text-gray-800">
-                          {route.name}
-                        </h4>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {route.description}
-                        </p>
-                        <p className="text-xs text-blue-600 mt-2">
-                          {route.stoppages.length} stops •{" "}
-                          {route.timeSlots.length} time slots
-                        </p>
-                      </div>
-                      <Bus className="w-6 h-6 text-blue-600" />
-                    </div>
+
+              {loadingRoutes ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading routes...</p>
                   </div>
-                ))}
-              </div>
-              <button
-                onClick={() => setStep(2)}
-                disabled={!formData.selectedRoute}
-                className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Continue
-              </button>
+                </div>
+              ) : routes.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <Bus className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 mb-2">No routes available</p>
+                  <p className="text-sm text-gray-500">
+                    Please contact the administrator to create routes.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-4">
+                    {routes.map((route) => (
+                      <div
+                        key={route._id}
+                        onClick={() => handleRouteSelect(route)}
+                        className={`border-2 rounded-lg p-4 cursor-pointer transition-all duration-200 ${
+                          formData.selectedRoute?._id === route._id
+                            ? "border-blue-600 bg-blue-50 shadow-md"
+                            : "border-gray-300 hover:border-blue-400 hover:shadow-sm"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="font-semibold text-lg text-gray-800">
+                              {route.name}
+                            </h4>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {route.description}
+                            </p>
+                            <p className="text-xs text-blue-600 mt-2">
+                              {route.stoppages.length} stops •{" "}
+                              {route.timeSlots.length} time slots
+                            </p>
+                          </div>
+                          <Bus className="w-6 h-6 text-blue-600" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => setStep(2)}
+                    disabled={!formData.selectedRoute}
+                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Continue
+                  </button>
+                </>
+              )}
             </div>
           )}
 
@@ -745,7 +772,9 @@ const RouteSubscription = () => {
                           : "border-gray-300 hover:border-gray-400"
                       }`}
                     >
-                      <h4 className="font-semibold capitalize text-lg">{plan}</h4>
+                      <h4 className="font-semibold capitalize text-lg">
+                        {plan}
+                      </h4>
                       <p className="text-xs text-gray-600 mt-1">
                         {plan === "daily"
                           ? "1 day"
@@ -766,8 +795,8 @@ const RouteSubscription = () => {
                   <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
                     <p className="text-sm text-red-600">
                       ⚠️ Insufficient stars! You need{" "}
-                      {calculateStarsCost(formData.planType) - starsBalance} more
-                      stars to purchase this subscription.
+                      {calculateStarsCost(formData.planType) - starsBalance}{" "}
+                      more stars to purchase this subscription.
                     </p>
                   </div>
                 )}
@@ -888,7 +917,9 @@ const RouteSubscription = () => {
                     ? "Processing..."
                     : starsBalance < calculateStarsCost(formData.planType)
                     ? "Insufficient Stars"
-                    : `Subscribe for ⭐ ${calculateStarsCost(formData.planType)} stars`}
+                    : `Subscribe for ⭐ ${calculateStarsCost(
+                        formData.planType
+                      )} stars`}
                 </button>
               </div>
             </div>

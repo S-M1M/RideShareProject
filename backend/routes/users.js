@@ -4,6 +4,7 @@ import User from "../models/User.js";
 import Subscription from "../models/Subscription.js";
 import Ride from "../models/Ride.js";
 import StarTransaction from "../models/StarTransaction.js";
+import PresetRoute from "../models/PresetRoute.js";
 
 const router = express.Router();
 
@@ -25,7 +26,7 @@ router.put("/profile", auth, async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.user._id,
       { name, phone },
-      { new: true },
+      { new: true }
     ).select("-password");
 
     res.json(user);
@@ -112,6 +113,18 @@ router.get("/stars/transactions", auth, async (req, res) => {
       .sort({ createdAt: -1 });
 
     res.json(transactions);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get active preset routes (for subscription) - Public endpoint
+router.get("/routes", async (req, res) => {
+  try {
+    const routes = await PresetRoute.find({ active: true }).sort({
+      createdAt: -1,
+    });
+    res.json(routes);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

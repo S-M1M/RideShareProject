@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { api } from "../../utils/api";
+import api from "../../utils/api";
 
 const BuyStars = () => {
   const [balance, setBalance] = useState(0);
@@ -138,8 +138,8 @@ const BuyStars = () => {
                             transaction.type === "purchase"
                               ? "bg-green-100 text-green-800"
                               : transaction.type === "spend"
-                                ? "bg-red-100 text-red-800"
-                                : "bg-blue-100 text-blue-800"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-blue-100 text-blue-800"
                           }`}
                         >
                           {transaction.type}
@@ -151,12 +151,14 @@ const BuyStars = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <span
                           className={
-                            transaction.type === "purchase" || transaction.type === "refund"
+                            transaction.type === "purchase" ||
+                            transaction.type === "refund"
                               ? "text-green-600"
                               : "text-red-600"
                           }
                         >
-                          {transaction.type === "purchase" || transaction.type === "refund"
+                          {transaction.type === "purchase" ||
+                          transaction.type === "refund"
                             ? "+"
                             : "-"}
                           {transaction.amount}
