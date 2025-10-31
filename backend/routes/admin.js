@@ -9,6 +9,7 @@ import Ride from "../models/Ride.js";
 import Route from "../models/Route.js";
 import PresetRoute from "../models/PresetRoute.js";
 import DriverAssignment from "../models/DriverAssignment.js";
+import StarTransaction from "../models/StarTransaction.js";
 
 const router = express.Router();
 const requireAdmin = checkRole(["admin"]);
@@ -510,5 +511,68 @@ router.delete(
     }
   }
 );
+
+// Get stars economy statistics
+router.get("/stars-economy", auth, requireAdmin, async (req, res) => {
+  try {
+    // Total stars in circulation (all user balances combined)
+    const usersWithStars = await User.find({}, "stars");
+    const totalStarsInCirculation = usersWithStars.reduce(
+      (sum, user) => sum + user.stars,
+      0
+    );
+
+    // Total stars purchased
+    const purchaseTransactions = await StarTransaction.aggregate([
+      { $match: { type: "purchase" } },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]);
+    const totalStarsPurchased = purchaseTransactions[0]?.total || 0;
+
+    // Total stars spent
+    const spendTransactions = await StarTransaction.aggregate([
+      { $match: { type: "spend" } },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]);
+    const totalStarsSpent = spendTransactions[0]?.total || 0;
+
+    // Total stars refunded
+    const refundTransactions = await StarTransaction.aggregate([
+      { $match: { type: "refund" } },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]);
+    const totalStarsRefunded = refundTransactions[0]?.total || 0;
+
+    // Subscription revenue by plan type
+    const subscriptionsByType = await Subscription.aggregate([
+      { $match: { active: true } },
+      {
+        $group: {
+          _id: "$plan_type",
+          count: { $sum: 1 },
+          totalStars: { $sum: "$starsCost" },
+        },
+      },
+    ]);
+
+    // Recent star transactions (last 20)
+    const recentTransactions = await StarTransaction.find()
+      .populate("user_id", "name email")
+      .populate("relatedSubscription")
+      .sort({ createdAt: -1 })
+      .limit(20);
+
+    res.json({
+      totalStarsInCirculation,
+      totalStarsPurchased,
+      totalStarsSpent,
+      totalStarsRefunded,
+      subscriptionsByType,
+      recentTransactions,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 export default router;

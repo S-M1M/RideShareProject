@@ -16,6 +16,7 @@ import Subscription from "./pages/user/Subscription";
 import MyRides from "./pages/user/MyRides";
 import MapView from "./pages/user/MapView";
 import Profile from "./pages/user/Profile";
+import BuyStars from "./pages/user/BuyStars";
 
 // Driver Pages
 import DriverLogin from "./pages/driver/DriverLogin";
@@ -85,6 +86,14 @@ function App() {
               element={
                 <ProtectedRoute role="user">
                   <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/buy-stars"
+              element={
+                <ProtectedRoute role="user">
+                  <BuyStars />
                 </ProtectedRoute>
               }
             />

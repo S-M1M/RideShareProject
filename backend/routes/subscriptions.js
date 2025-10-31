@@ -4,6 +4,8 @@ import Subscription from "../models/Subscription.js";
 import Ride from "../models/Ride.js";
 import DriverAssignment from "../models/DriverAssignment.js";
 import Vehicle from "../models/Vehicle.js";
+import User from "../models/User.js";
+import StarTransaction from "../models/StarTransaction.js";
 
 const router = express.Router();
 
@@ -284,6 +286,163 @@ router.put("/:id/cancel", auth, async (req, res) => {
     }
 
     res.json({ message: "Subscription cancelled successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Purchase subscription with stars
+router.post("/purchase", auth, async (req, res) => {
+  try {
+    const {
+      driver_assignment_id,
+      pickup_stop_id,
+      drop_stop_id,
+      plan_type, // 'daily', 'weekly', 'monthly'
+    } = req.body;
+
+    // Validate plan type
+    if (!["daily", "weekly", "monthly"].includes(plan_type)) {
+      return res.status(400).json({ error: "Invalid plan type" });
+    }
+
+    // Calculate stars cost based on plan type
+    const starsCostMap = {
+      daily: 10,
+      weekly: 60, // 10% discount (10*7 = 70, but 60)
+      monthly: 200, // ~33% discount (10*30 = 300, but 200)
+    };
+    const starsCost = starsCostMap[plan_type];
+
+    // Check user's stars balance
+    const user = await User.findById(req.user._id);
+    if (user.stars < starsCost) {
+      return res.status(400).json({
+        error: "Insufficient stars balance",
+        required: starsCost,
+        current: user.stars,
+      });
+    }
+
+    // Check assignment exists
+    const assignment = await DriverAssignment.findById(driver_assignment_id)
+      .populate("presetRoute_id")
+      .populate("vehicle_id");
+
+    if (!assignment) {
+      return res.status(404).json({ error: "Driver assignment not found" });
+    }
+
+    // Check capacity
+    const subscribedCount = await Subscription.countDocuments({
+      driver_assignment_id: assignment._id,
+      active: true,
+    });
+
+    if (subscribedCount >= assignment.vehicle_id.capacity) {
+      return res.status(400).json({ error: "No available seats" });
+    }
+
+    // Calculate end date
+    const startDate = new Date();
+    let endDate = new Date();
+    if (plan_type === "daily") {
+      endDate.setDate(endDate.getDate() + 1);
+    } else if (plan_type === "weekly") {
+      endDate.setDate(endDate.getDate() + 7);
+    } else if (plan_type === "monthly") {
+      endDate.setMonth(endDate.getMonth() + 1);
+    }
+
+    // Deduct stars from user
+    user.stars -= starsCost;
+    await user.save();
+
+    // Create subscription
+    const subscription = await Subscription.create({
+      user_id: req.user._id,
+      driver_assignment_id,
+      pickup_stop_id,
+      drop_stop_id,
+      start_date: startDate,
+      end_date: endDate,
+      plan_type,
+      price: 0, // No money, only stars
+      starsCost,
+      active: true,
+    });
+
+    // Create star transaction
+    await StarTransaction.create({
+      user_id: req.user._id,
+      type: "spend",
+      amount: starsCost,
+      description: `Purchased ${plan_type} subscription`,
+      relatedSubscription: subscription._id,
+      balanceAfter: user.stars,
+    });
+
+    res.json({
+      message: "Subscription purchased successfully",
+      subscription,
+      starsRemaining: user.stars,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Refund subscription (50% stars back)
+router.post("/:id/refund", auth, async (req, res) => {
+  try {
+    const subscription = await Subscription.findById(req.params.id);
+
+    if (!subscription) {
+      return res.status(404).json({ error: "Subscription not found" });
+    }
+
+    if (subscription.user_id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    if (!subscription.active) {
+      return res.status(400).json({ error: "Subscription is not active" });
+    }
+
+    if (subscription.refunded) {
+      return res.status(400).json({ error: "Subscription already refunded" });
+    }
+
+    // Calculate refund amount (50% of stars cost)
+    const refundAmount = Math.floor(subscription.starsCost * 0.5);
+
+    // Update user's stars balance
+    const user = await User.findById(req.user._id);
+    user.stars += refundAmount;
+    await user.save();
+
+    // Update subscription
+    subscription.active = false;
+    subscription.refunded = true;
+    subscription.refundAmount = refundAmount;
+    subscription.refundedAt = new Date();
+    await subscription.save();
+
+    // Create star transaction for refund
+    await StarTransaction.create({
+      user_id: req.user._id,
+      type: "refund",
+      amount: refundAmount,
+      description: `Refund for ${subscription.plan_type} subscription (50%)`,
+      relatedSubscription: subscription._id,
+      balanceAfter: user.stars,
+    });
+
+    res.json({
+      message: "Subscription refunded successfully",
+      refundAmount,
+      starsBalance: user.stars,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

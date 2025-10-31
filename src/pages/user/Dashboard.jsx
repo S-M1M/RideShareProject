@@ -262,7 +262,17 @@ const Dashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Link
+            to="/buy-stars"
+            className="bg-purple-600 text-white rounded-lg p-6 hover:bg-purple-700 transition-colors"
+          >
+            <h3 className="text-lg font-semibold mb-2">⭐ Buy Stars</h3>
+            <p className="text-purple-100">
+              Purchase stars to buy subscriptions
+            </p>
+          </Link>
+
           <Link
             to="/subscription"
             className="bg-blue-600 text-white rounded-lg p-6 hover:bg-blue-700 transition-colors"

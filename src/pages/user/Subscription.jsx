@@ -125,6 +125,7 @@ const RouteSubscription = () => {
   const [step, setStep] = useState(1);
   const [routes, setRoutes] = useState([]);
   const [userSubscriptions, setUserSubscriptions] = useState([]);
+  const [starsBalance, setStarsBalance] = useState(0);
   const [formData, setFormData] = useState({
     selectedRoute: null,
     selectedTimeSlot: "",
@@ -133,6 +134,26 @@ const RouteSubscription = () => {
     planType: "monthly",
   });
   const [loading, setLoading] = useState(false);
+
+  // Function to calculate stars cost based on plan type
+  const calculateStarsCost = (planType) => {
+    const starsCostMap = {
+      daily: 10,
+      weekly: 60, // 10% discount
+      monthly: 200, // ~33% discount
+    };
+    return starsCostMap[planType] || 0;
+  };
+
+  // Fetch stars balance
+  const fetchStarsBalance = async () => {
+    try {
+      const response = await api.get("/users/stars/balance");
+      setStarsBalance(response.data.stars);
+    } catch (error) {
+      console.error("Error fetching stars balance:", error);
+    }
+  };
 
   // Function to get user's local subscriptions
   const loadUserSubscriptions = () => {
@@ -156,6 +177,7 @@ const RouteSubscription = () => {
     if (user) {
       const subscriptions = loadUserSubscriptions();
       setUserSubscriptions(subscriptions);
+      fetchStarsBalance(); // Fetch stars balance
     }
 
     // Load saved subscription data from localStorage
@@ -689,6 +711,22 @@ const RouteSubscription = () => {
                 Confirm Your Subscription
               </h3>
 
+              {/* Stars Balance Display */}
+              <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm opacity-90">Your Stars Balance</p>
+                    <p className="text-3xl font-bold">⭐ {starsBalance}</p>
+                  </div>
+                  <a
+                    href="/buy-stars"
+                    className="bg-white text-purple-600 px-4 py-2 rounded-lg font-semibold hover:bg-purple-50 transition-colors"
+                  >
+                    Buy Stars
+                  </a>
+                </div>
+              </div>
+
               {/* Plan Type Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">
@@ -701,13 +739,13 @@ const RouteSubscription = () => {
                       onClick={() =>
                         setFormData((prev) => ({ ...prev, planType: plan }))
                       }
-                      className={`border-2 rounded-lg p-3 cursor-pointer text-center transition-colors ${
+                      className={`border-2 rounded-lg p-4 cursor-pointer text-center transition-colors ${
                         formData.planType === plan
                           ? "border-blue-600 bg-blue-50"
                           : "border-gray-300 hover:border-gray-400"
                       }`}
                     >
-                      <h4 className="font-semibold capitalize">{plan}</h4>
+                      <h4 className="font-semibold capitalize text-lg">{plan}</h4>
                       <p className="text-xs text-gray-600 mt-1">
                         {plan === "daily"
                           ? "1 day"
@@ -715,9 +753,24 @@ const RouteSubscription = () => {
                           ? "7 days"
                           : "30 days"}
                       </p>
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <p className="text-2xl font-bold text-purple-600">
+                          ⭐ {calculateStarsCost(plan)}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">stars</p>
+                      </div>
                     </div>
                   ))}
                 </div>
+                {starsBalance < calculateStarsCost(formData.planType) && (
+                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-600">
+                      ⚠️ Insufficient stars! You need{" "}
+                      {calculateStarsCost(formData.planType) - starsBalance} more
+                      stars to purchase this subscription.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Full Route Map */}
@@ -825,14 +878,17 @@ const RouteSubscription = () => {
                 </button>
                 <button
                   onClick={handleSubmit}
-                  disabled={loading}
-                  className="flex-1 bg-green-600 text-white py-3 px-4 rounded-md hover:bg-green-700 disabled:opacity-50 transition-colors font-semibold"
+                  disabled={
+                    loading ||
+                    starsBalance < calculateStarsCost(formData.planType)
+                  }
+                  className="flex-1 bg-purple-600 text-white py-3 px-4 rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold"
                 >
                   {loading
                     ? "Processing..."
-                    : `Subscribe for ${
-                        calculateFareBreakdown()?.totalAmount || 0
-                      } points`}
+                    : starsBalance < calculateStarsCost(formData.planType)
+                    ? "Insufficient Stars"
+                    : `Subscribe for ⭐ ${calculateStarsCost(formData.planType)} stars`}
                 </button>
               </div>
             </div>

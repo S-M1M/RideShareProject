@@ -27,6 +27,11 @@ const userSchema = new mongoose.Schema({
     enum: ["user", "driver", "admin"],
     default: "user",
   },
+  stars: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

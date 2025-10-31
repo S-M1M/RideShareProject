@@ -33,6 +33,22 @@ const subscriptionSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  starsCost: {
+    type: Number,
+    required: true,
+    default: 0,
+  },
+  refunded: {
+    type: Boolean,
+    default: false,
+  },
+  refundAmount: {
+    type: Number,
+    default: 0,
+  },
+  refundedAt: {
+    type: Date,
+  },
   pickup_location: {
     latitude: { type: Number, required: true },
     longitude: { type: Number, required: true },
