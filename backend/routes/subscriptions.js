@@ -6,6 +6,7 @@ import DriverAssignment from "../models/DriverAssignment.js";
 import Vehicle from "../models/Vehicle.js";
 import User from "../models/User.js";
 import StarTransaction from "../models/StarTransaction.js";
+import PresetRoute from "../models/PresetRoute.js";
 
 const router = express.Router();
 
@@ -444,6 +445,123 @@ router.post("/:id/refund", auth, async (req, res) => {
       starsBalance: user.stars,
     });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create subscription with stars (new simplified endpoint)
+router.post("/create-with-stars", auth, async (req, res) => {
+  try {
+    const {
+      preset_route_id,
+      pickup_stop_id,
+      pickup_stop_name,
+      drop_stop_id,
+      drop_stop_name,
+      plan_type,
+      time_slot,
+      pickup_location,
+      drop_location,
+      distance,
+    } = req.body;
+
+    // Validate plan type
+    if (!["daily", "weekly", "monthly"].includes(plan_type)) {
+      return res.status(400).json({ error: "Invalid plan type" });
+    }
+
+    // Calculate stars cost based on plan type
+    const starsCostMap = {
+      daily: 10,
+      weekly: 60,
+      monthly: 200,
+    };
+    const starsCost = starsCostMap[plan_type];
+
+    // Check user's stars balance
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Initialize stars if not set
+    if (typeof user.stars !== "number") {
+      user.stars = 0;
+    }
+
+    if (user.stars < starsCost) {
+      return res.status(400).json({
+        error: "Insufficient stars balance",
+        required: starsCost,
+        current: user.stars,
+      });
+    }
+
+    // Verify preset route exists
+    const presetRoute = await PresetRoute.findById(preset_route_id);
+    if (!presetRoute) {
+      return res.status(404).json({ error: "Route not found" });
+    }
+
+    // Calculate dates
+    const startDate = new Date();
+    let endDate = new Date();
+    if (plan_type === "daily") {
+      endDate.setDate(endDate.getDate() + 1);
+    } else if (plan_type === "weekly") {
+      endDate.setDate(endDate.getDate() + 7);
+    } else if (plan_type === "monthly") {
+      endDate.setMonth(endDate.getMonth() + 1);
+    }
+
+    // Deduct stars from user
+    user.stars -= starsCost;
+    await user.save();
+
+    // Create subscription
+    const subscription = await Subscription.create({
+      user_id: req.user._id,
+      preset_route_id,
+      plan_type,
+      start_date: startDate,
+      end_date: endDate,
+      price: 0,
+      starsCost,
+      pickup_location,
+      drop_location,
+      distance,
+      active: true,
+      schedule: {
+        days: [
+          "monday",
+          "tuesday",
+          "wednesday",
+          "thursday",
+          "friday",
+          "saturday",
+          "sunday",
+        ],
+        time: time_slot,
+      },
+    });
+
+    // Create star transaction
+    await StarTransaction.create({
+      user_id: req.user._id,
+      type: "spend",
+      amount: starsCost,
+      description: `Purchased ${plan_type} subscription`,
+      relatedSubscription: subscription._id,
+      balanceAfter: user.stars,
+    });
+
+    res.json({
+      message: "Subscription created successfully",
+      subscription,
+      starsRemaining: user.stars,
+    });
+  } catch (error) {
+    console.error("Error creating subscription:", error);
     res.status(500).json({ error: error.message });
   }
 });

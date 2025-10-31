@@ -30,11 +30,10 @@ const Dashboard = () => {
       // Get user's rides
       const userRides = user?.rides || [];
 
-      // Calculate total refunds (mock data for now)
-      const totalRefunds = userRides.reduce(
-        (total, ride) => total + (ride.refundAmount || 0),
-        0
-      );
+      // Calculate total refunds (support both camelCase and snake_case from backend)
+      const totalRefunds = userRides.reduce((total, ride) => {
+        return total + (ride.refundAmount || ride.refund_amount || 0);
+      }, 0);
 
       // Set stats
       setStats({
@@ -95,19 +94,22 @@ const Dashboard = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Route:</span>
                   <span className="font-medium">
-                    {currentSubscription.routeName}
+                    {currentSubscription.routeName ||
+                      currentSubscription.route?.name}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Plan Type:</span>
                   <span className="font-medium capitalize">
-                    {currentSubscription.plan_type}
+                    {currentSubscription.plan_type ||
+                      currentSubscription.planType}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Price:</span>
                   <span className="font-medium">
-                    {currentSubscription.price} points
+                    {currentSubscription.starsCost || currentSubscription.price}{" "}
+                    stars
                   </span>
                 </div>
               </div>
@@ -115,20 +117,23 @@ const Dashboard = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Pickup:</span>
                   <span className="font-medium text-green-700">
-                    {currentSubscription.pickupStopName}
+                    {currentSubscription.pickupStopName ||
+                      currentSubscription.pickup_location?.name}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Drop:</span>
                   <span className="font-medium text-red-700">
-                    {currentSubscription.dropStopName}
+                    {currentSubscription.dropStopName ||
+                      currentSubscription.drop_location?.name}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Time Slot:</span>
                   <span className="font-medium flex items-center">
                     <Clock className="w-4 h-4 mr-1" />
-                    {currentSubscription.timeSlot}
+                    {currentSubscription.timeSlot ||
+                      currentSubscription.time_slot}
                   </span>
                 </div>
               </div>
@@ -136,7 +141,10 @@ const Dashboard = () => {
             <div className="mt-4 p-3 bg-blue-50 rounded-lg">
               <p className="text-sm text-blue-800">
                 Subscribed on:{" "}
-                {new Date(currentSubscription.createdAt).toLocaleDateString()}
+                {new Date(
+                  currentSubscription.createdAt ||
+                    currentSubscription.created_at
+                ).toLocaleDateString()}
               </p>
             </div>
           </div>
@@ -239,10 +247,10 @@ const Dashboard = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">
-                  Total points
+                  Stars Balance
                 </p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {stats.totalRefunds || 0}
+                  {user?.stars ?? stats.totalRefunds ?? 0}
                 </p>
               </div>
             </div>
@@ -255,9 +263,62 @@ const Dashboard = () => {
             <h3 className="text-lg font-medium text-gray-900">Today's Rides</h3>
           </div>
           <div className="p-6">
-            <p className="text-gray-500 text-center py-4">
-              No rides scheduled for today
-            </p>
+            {todayRides.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">
+                No rides scheduled for today
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {todayRides.map((ride) => {
+                  const rideId =
+                    ride._id || ride.id || `${ride.date}-${ride.pickup_time}`;
+                  const time =
+                    ride.pickup_time ||
+                    ride.time ||
+                    new Date(ride.date).toLocaleTimeString();
+                  const routeName =
+                    ride.routeName ||
+                    ride.route?.name ||
+                    ride.subscription?.route?.name ||
+                    (ride.pickup_location?.address &&
+                    ride.drop_location?.address
+                      ? `${ride.pickup_location.address.replace(
+                          ", Bangladesh",
+                          ""
+                        )} → ${ride.drop_location.address.replace(
+                          ", Bangladesh",
+                          ""
+                        )}`
+                      : "Scheduled Ride");
+                  const status = (ride.status || "scheduled").replace(
+                    /_/g,
+                    " "
+                  );
+
+                  return (
+                    <li
+                      key={rideId}
+                      className="border p-3 rounded flex items-center justify-between"
+                    >
+                      <div>
+                        <p className="font-medium">{routeName}</p>
+                        <p className="text-sm text-gray-500">{time}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-gray-600">
+                          {status[0].toUpperCase() + status.slice(1)}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {ride.driver_name ||
+                            ride.driver?.name ||
+                            "Driver TBD"}
+                        </p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
         </div>
 

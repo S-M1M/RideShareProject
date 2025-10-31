@@ -94,7 +94,7 @@ const RouteSubscription = () => {
       console.log("Fetching routes from API...");
       const response = await api.get("/users/routes");
       const presetRoutes = response.data;
-      
+
       console.log("Routes fetched successfully:", presetRoutes.length);
 
       // Transform preset routes to match the expected format
@@ -152,7 +152,7 @@ const RouteSubscription = () => {
       setRoutes(transformedRoutes);
     } catch (error) {
       console.error("Error fetching preset routes:", error);
-      
+
       // More detailed error handling
       if (error.response) {
         // Server responded with error status
@@ -161,7 +161,7 @@ const RouteSubscription = () => {
           error.response.status,
           error.response.data
         );
-        
+
         // Show user-friendly error message
         if (error.response.status === 404) {
           console.error("Routes endpoint not found - Check API URL");
@@ -176,7 +176,7 @@ const RouteSubscription = () => {
         // Something else happened
         console.error("Error:", error.message);
       }
-      
+
       // Set empty routes array to show "no routes" message
       setRoutes([]);
     } finally {
@@ -279,9 +279,13 @@ const RouteSubscription = () => {
     setLoading(true);
 
     try {
-      const fareBreakdown = calculateFareBreakdown();
-      if (!fareBreakdown) {
-        alert("Could not calculate fare. Please check your selections.");
+      const starsCost = calculateStarsCost(formData.planType);
+
+      // Check stars balance
+      if (starsBalance < starsCost) {
+        alert(
+          `Insufficient stars! You need ${starsCost - starsBalance} more stars.`
+        );
         setLoading(false);
         return;
       }
@@ -293,23 +297,15 @@ const RouteSubscription = () => {
         return;
       }
 
-      // Use _id if available, otherwise use id
-      const userId = user._id || user.id;
-      console.log("User ID being used:", userId);
-
-      const subscriptionData = {
-        id: `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate unique ID
-        user_id: userId,
-        routeId: formData.selectedRoute._id,
-        routeName: formData.selectedRoute.name,
-        timeSlot: formData.selectedTimeSlot,
-        pickupStopId: formData.pickupStop._id,
-        pickupStopName: formData.pickupStop.name,
-        dropStopId: formData.dropStop._id,
-        dropStopName: formData.dropStop.name,
+      // Prepare API request data
+      const subscriptionRequest = {
+        preset_route_id: formData.selectedRoute._id,
+        pickup_stop_id: formData.pickupStop._id,
+        pickup_stop_name: formData.pickupStop.name,
+        drop_stop_id: formData.dropStop._id,
+        drop_stop_name: formData.dropStop.name,
         plan_type: formData.planType,
-        price: fareBreakdown.totalAmount,
-        distance: fareBreakdown.distance,
+        time_slot: formData.selectedTimeSlot,
         pickup_location: {
           latitude: formData.pickupStop.lat,
           longitude: formData.pickupStop.lng,
@@ -320,58 +316,43 @@ const RouteSubscription = () => {
           longitude: formData.dropStop.lng,
           address: formData.dropStop.name,
         },
-        schedule: {
-          days: [
-            "monday",
-            "tuesday",
-            "wednesday",
-            "thursday",
-            "friday",
-            "saturday",
-            "sunday",
-          ], // All days for now
-          time: formData.selectedTimeSlot,
-        },
-        status: "active",
-        createdAt: new Date().toISOString(),
-        startDate: new Date().toISOString(),
-        endDate: new Date(
-          Date.now() +
-            (formData.planType === "daily"
-              ? 1
-              : formData.planType === "weekly"
-              ? 7
-              : 30) *
-              24 *
-              60 *
-              60 *
-              1000
-        ).toISOString(),
+        distance: calculateFareBreakdown().distance,
       };
 
-      console.log("Subscription data:", subscriptionData);
-      console.log("Price calculation:", fareBreakdown);
+      console.log("Creating subscription via API:", subscriptionRequest);
 
-      // Save subscription locally instead of API call
-      const success = addUserSubscription(subscriptionData);
+      // Call backend API to create subscription
+      const response = await api.post(
+        "/subscriptions/create-with-stars",
+        subscriptionRequest
+      );
 
-      if (!success) {
-        throw new Error("Failed to save subscription locally");
-      }
+      console.log("Subscription created successfully:", response.data);
 
-      // Also save as current subscription
+      // Also save locally for offline access
+      const subscriptionData = {
+        ...response.data.subscription,
+        routeName: formData.selectedRoute.name,
+        timeSlot: formData.selectedTimeSlot,
+        pickupStopName: formData.pickupStop.name,
+        dropStopName: formData.dropStop.name,
+      };
+
+      addUserSubscription(subscriptionData);
       saveCurrentSubscription(subscriptionData);
+
+      // Update stars balance
+      await fetchStarsBalance();
 
       // Update the local state
       setUserSubscriptions(loadUserSubscriptions());
 
-      // Simulate successful API response
-      console.log("Subscription saved locally successfully!");
-
       // Clear the form data from localStorage after successful submission
       clearSubscriptionFormData();
 
-      alert("Successfully subscribed! (Saved locally)");
+      alert(
+        `Successfully subscribed! ${starsCost} stars deducted. Remaining: ${response.data.starsRemaining} stars`
+      );
       setStep(1);
       setFormData({
         selectedRoute: null,
@@ -382,7 +363,8 @@ const RouteSubscription = () => {
       });
     } catch (error) {
       console.error("Error creating subscription:", error);
-      alert("Error creating subscription: " + error.message);
+      const errorMessage = error.response?.data?.error || error.message;
+      alert("Error creating subscription: " + errorMessage);
     } finally {
       setLoading(false);
     }
@@ -471,11 +453,13 @@ const RouteSubscription = () => {
                           {subscription.plan_type}
                         </span>
                         <span className="text-green-600 font-semibold">
-                          {subscription.price} points
+                          {subscription.starsCost || subscription.price} stars
                         </span>
                         <span className="text-gray-500">
                           Expires:{" "}
-                          {new Date(subscription.endDate).toLocaleDateString()}
+                          {new Date(
+                            subscription.endDate || subscription.end_date
+                          ).toLocaleDateString()}
                         </span>
                       </div>
                     </div>
@@ -881,13 +865,13 @@ const RouteSubscription = () => {
                         <div className="flex justify-between">
                           <span className="text-gray-600">Base Rate:</span>
                           <span className="font-medium">
-                            {fareBreakdown.baseRatePerStop} points /stop
+                            {fareBreakdown.baseRatePerStop} stars /stop
                           </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Single Trip:</span>
                           <span className="font-medium">
-                            {fareBreakdown.baseAmount} points
+                            {fareBreakdown.baseAmount} stars
                           </span>
                         </div>
                         <div className="flex justify-between">
@@ -901,13 +885,13 @@ const RouteSubscription = () => {
                           <div className="flex justify-between text-green-600">
                             <span>You Save:</span>
                             <span className="font-semibold">
-                              {fareBreakdown.savings} points
+                              {fareBreakdown.savings} stars
                             </span>
                           </div>
                         )}
                         <div className="flex justify-between font-bold text-lg border-t pt-3 text-blue-700">
                           <span>Total:</span>
-                          <span>{fareBreakdown.totalAmount} points</span>
+                          <span>{fareBreakdown.totalAmount} stars</span>
                         </div>
                       </div>
                     </div>
