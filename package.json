@@ -8,9 +8,9 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "server": "node backend/index.js",
-    "start": "node backend/index.js",
-    "dev:full": "concurrently \"npm run server\" \"npm run dev\""
+    "server": "node backend/server.js",
+    "start": "node backend/server.js",
+    "dev:full": "concurrently \"npm run server\" \"npm run dev\" --names \"BACKEND,FRONTEND\" --prefix-colors \"bgBlue.bold,bgMagenta.bold\""
   },
   "engines": {
     "node": "20.x"

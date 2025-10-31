@@ -42,6 +42,58 @@ A full-stack MERN application for subscription-based office ride sharing with ro
 
 ## Quick Start
 
+### Local Development
+
+**Option 1: Single Command (Recommended)**
+```bash
+npm install
+npm run dev:full
+```
+
+**Option 2: Windows Scripts**
+Double-click `start-dev.bat` or `start-dev.ps1`
+
+**Option 3: Separate Terminals**
+```bash
+# Terminal 1 - Backend
+cd backend
+node server.js
+
+# Terminal 2 - Frontend
+npm run dev
+```
+
+The application will be available at:
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:5000`
+
+**For detailed setup instructions, see [QUICK_START.md](./QUICK_START.md)**
+
+### Environment Setup
+
+1. **Create `.env` file in project root:**
+   ```env
+   VITE_API_URL=https://rideshareproject-vyu1.onrender.com/api
+   ```
+
+2. **Create `backend/.env` file:**
+   ```env
+   MONGODB_URI=mongodb://localhost:27017/ridesharing
+   JWT_SECRET=your_jwt_secret_key_here
+   PORT=5000
+   ```
+
+See `.env.example` for all configuration options.
+
+## Documentation
+
+- 📘 [Quick Start Guide](./QUICK_START.md) - Get up and running fast
+- 📗 [Development Guide](./DEVELOPMENT_GUIDE.md) - Comprehensive development setup
+- 📕 [API Reference](./API_REFERENCE.md) - Backend API documentation
+- 📙 [Testing Guide](./TESTING_GUIDE.md) - Testing instructions
+
+## Original Installation Instructions
+
 1. **Install Dependencies**
 
    ```bash

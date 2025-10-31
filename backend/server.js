@@ -20,7 +20,7 @@ app.use(
     origin: ["https://pickmeupdhaka.netlify.app", "http://localhost:5173"],
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  }),
+  })
 );
 app.use(express.json());
 
@@ -44,6 +44,14 @@ app.use("/api/subscriptions", subscriptionRoutes);
 app.use("/api/rides", rideRoutes);
 app.use("/api/drivers", driverRoutes);
 app.use("/api/admin", adminRoutes);
+
+// Log all requests in development
+if (process.env.NODE_ENV !== "production") {
+  app.use((req, res, next) => {
+    console.log(`${req.method} ${req.path}`);
+    next();
+  });
+}
 
 // Health check
 app.get("/api/health", (req, res) => {
