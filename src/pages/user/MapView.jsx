@@ -1,114 +1,113 @@
 import React, { useEffect, useState } from "react";
-import { MapPin, Clock, CheckCircle, RefreshCw } from "lucide-react";
+import { MapPin, Clock, CheckCircle } from "lucide-react";
 import Layout from "../../components/Layout";
 import { useAuth } from "../../contexts/AuthContext";
-import api from "../../utils/api";
+
+const mockRoutes = [
+  {
+    id: 1,
+    name: "Route A - Gulshan to Motijheel",
+    description: "Express route via Tejgaon",
+    totalStops: 8,
+    estimatedTime: "45 min",
+    fare: "৳35",
+    stops: [
+      { id: 1, name: "Gulshan Circle 1", lat: 23.7808, lng: 90.4176 },
+      { id: 2, name: "Gulshan Avenue", lat: 23.7756, lng: 90.4125 },
+      { id: 3, name: "Banani Road 11", lat: 23.7741, lng: 90.4067 },
+      { id: 4, name: "Mohakhali Bus Stand", lat: 23.7697, lng: 90.3938 },
+      { id: 5, name: "Tejgaon Industrial Area", lat: 23.7547, lng: 90.3914 },
+      { id: 6, name: "Farmgate", lat: 23.7515, lng: 90.3896 },
+      { id: 7, name: "Karwan Bazar", lat: 23.7502, lng: 90.3897 },
+      { id: 8, name: "Motijheel", lat: 23.7338, lng: 90.4065 },
+    ],
+  },
+  {
+    id: 2,
+    name: "Route B - Dhanmondi to Uttara",
+    description: "North-bound express",
+    totalStops: 10,
+    estimatedTime: "55 min",
+    fare: "৳45",
+    stops: [
+      { id: 9, name: "Dhanmondi 27", lat: 23.7461, lng: 90.3742 },
+      { id: 10, name: "Dhanmondi 32", lat: 23.7489, lng: 90.3706 },
+      { id: 11, name: "Science Lab", lat: 23.7358, lng: 90.3753 },
+      { id: 12, name: "New Market", lat: 23.7268, lng: 90.3804 },
+      { id: 13, name: "Azimpur", lat: 23.7194, lng: 90.3847 },
+      { id: 14, name: "Nilkhet", lat: 23.7267, lng: 90.3889 },
+      { id: 15, name: "Shahbagh", lat: 23.7389, lng: 90.3944 },
+      { id: 16, name: "Matsya Bhaban", lat: 23.7542, lng: 90.3879 },
+      { id: 17, name: "Airport Road", lat: 23.8103, lng: 90.4125 },
+      { id: 18, name: "Uttara Sector 3", lat: 23.8759, lng: 90.3795 },
+    ],
+  },
+  {
+    id: 3,
+    name: "Route C - Mirpur to Wari",
+    description: "Central route via Newmarket",
+    totalStops: 9,
+    estimatedTime: "50 min",
+    fare: "৳40",
+    stops: [
+      { id: 19, name: "Mirpur 10", lat: 23.8069, lng: 90.3683 },
+      { id: 20, name: "Kazipara", lat: 23.7958, lng: 90.3747 },
+      { id: 21, name: "Shewrapara", lat: 23.7847, lng: 90.3811 },
+      { id: 22, name: "Agargaon", lat: 23.7736, lng: 90.3875 },
+      { id: 23, name: "Sher-e-Bangla Nagar", lat: 23.7625, lng: 90.3939 },
+      { id: 24, name: "Dhanmondi", lat: 23.7461, lng: 90.3742 },
+      { id: 25, name: "New Market", lat: 23.7268, lng: 90.3804 },
+      { id: 26, name: "Paltan", lat: 23.7347, lng: 90.4161 },
+      { id: 27, name: "Wari", lat: 23.7234, lng: 90.4289 },
+    ],
+  },
+];
 
 const MapView = () => {
   const { user } = useAuth();
-  const [assignments, setAssignments] = useState([]);
-  const [selectedAssignment, setSelectedAssignment] = useState(null);
+  const [selectedRoute, setSelectedRoute] = useState(mockRoutes[0]);
   const [selectedStop, setSelectedStop] = useState(null);
   const [mapInstance, setMapInstance] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [routeProgress, setRouteProgress] = useState({});
 
-  // Fetch driver assignments
+  // Load route progress from localStorage
   useEffect(() => {
-    if (user?.role === "driver") {
-      fetchAssignments();
-    } else {
-      setLoading(false);
+    const savedProgress = localStorage.getItem("routeProgress");
+    if (savedProgress) {
+      setRouteProgress(JSON.parse(savedProgress));
     }
-  }, [user]);
+  }, []);
 
-  const fetchAssignments = async () => {
-    try {
-      const today = new Date().toISOString().split("T")[0];
-      const response = await api.get(`/drivers/assignments?date=${today}`);
-      setAssignments(response.data);
-      if (response.data.length > 0) {
-        setSelectedAssignment(response.data[0]);
-      }
-    } catch (error) {
-      console.error("Error fetching assignments:", error);
-    } finally {
-      setLoading(false);
-    }
+  // Save route progress to localStorage
+  const saveProgress = (progress) => {
+    setRouteProgress(progress);
+    localStorage.setItem("routeProgress", JSON.stringify(progress));
   };
 
-  // Get all stops including start and end points
-  const getAllStops = (assignment) => {
-    if (!assignment?.presetRoute_id) return [];
-    
-    const route = assignment.presetRoute_id;
-    const allStops = [
-      { ...route.startPoint, order: -1, type: "start" },
-      ...route.stops.map(stop => ({ ...stop, type: "intermediate" })),
-      { ...route.endPoint, order: route.stops.length, type: "end" }
-    ];
-    
-    return allStops.sort((a, b) => (a.order || 0) - (b.order || 0));
-  };
-
-  // Get current stop index for an assignment
-  const getCurrentStopIndex = (assignment) => {
-    return assignment?.currentStopIndex || 0;
-  };
-
-  // Get stop status
-  const getStopStatus = (assignment, stopIndex) => {
-    const currentIndex = getCurrentStopIndex(assignment);
-    if (stopIndex < currentIndex) return "completed";
-    if (stopIndex === currentIndex) return "current";
-    return "upcoming";
+  // Get current stop index for a route
+  const getCurrentStopIndex = (routeId) => {
+    return routeProgress[routeId]?.currentStopIndex || 0;
   };
 
   // Mark a stop as reached (driver only)
-  const markStopAsReached = async (assignment, stopIndex) => {
+  const markStopAsReached = (routeId, stopIndex) => {
     if (user?.role !== "driver") return;
 
-    try {
-      const response = await api.put(`/drivers/assignments/${assignment._id}/progress`, {
-        stopIndex,
-      });
-      
-      // Update the assignment in state
-      setAssignments(assignments.map(a => 
-        a._id === assignment._id ? response.data : a
-      ));
-      setSelectedAssignment(response.data);
-    } catch (error) {
-      alert("Error updating progress: " + (error.response?.data?.error || error.message));
-    }
+    const newProgress = {
+      ...routeProgress,
+      [routeId]: {
+        currentStopIndex: stopIndex + 1,
+      },
+    };
+    saveProgress(newProgress);
   };
 
-  // Reset assignment for next day
-  const resetAssignment = async (assignment) => {
-    if (user?.role !== "driver") return;
-    
-    if (!window.confirm("Are you sure you want to reset this route? This will clear all progress.")) {
-      return;
-    }
-
-    try {
-      const response = await api.post(`/drivers/assignments/${assignment._id}/reset`);
-      
-      // Update the assignment in state
-      setAssignments(assignments.map(a => 
-        a._id === assignment._id ? response.data.assignment : a
-      ));
-      setSelectedAssignment(response.data.assignment);
-      alert("Route reset successfully!");
-    } catch (error) {
-      alert("Error resetting route: " + (error.response?.data?.error || error.message));
-    }
-  };
-
-  // Check if all stops are completed
-  const isAllStopsCompleted = (assignment) => {
-    if (!assignment) return false;
-    const allStops = getAllStops(assignment);
-    return getCurrentStopIndex(assignment) >= allStops.length;
+  // Get stop status
+  const getStopStatus = (routeId, stopIndex) => {
+    const currentIndex = getCurrentStopIndex(routeId);
+    if (stopIndex < currentIndex) return "completed";
+    if (stopIndex === currentIndex) return "current";
+    return "upcoming";
   };
 
   // Initialize map
@@ -146,9 +145,9 @@ const MapView = () => {
     };
   }, []);
 
-  // Update map markers when assignment changes
+  // Update map markers when route changes
   useEffect(() => {
-    if (!mapInstance || !selectedAssignment?.presetRoute_id) return;
+    if (!mapInstance) return;
 
     const updateMap = async () => {
       const L = (await import("leaflet")).default;
@@ -160,13 +159,11 @@ const MapView = () => {
         }
       });
 
-      const allStops = getAllStops(selectedAssignment);
-
       // Add markers for each stop
       const markers = [];
-      allStops.forEach((stop, index) => {
-        const isSelected = selectedStop?.name === stop.name;
-        const stopStatus = getStopStatus(selectedAssignment, index);
+      selectedRoute.stops.forEach((stop, index) => {
+        const isSelected = selectedStop?.id === stop.id;
+        const stopStatus = getStopStatus(selectedRoute.id, index);
 
         // Define colors based on status
         let backgroundColor = "#6B7280"; // Default gray
@@ -190,7 +187,7 @@ const MapView = () => {
             font-size: 14px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
           ">
-            ${stop.type === "start" ? "S" : stop.type === "end" ? "E" : index}
+            ${index + 1}
           </div>
         `;
 
@@ -205,12 +202,12 @@ const MapView = () => {
           icon: customIcon,
         }).addTo(mapInstance).bindPopup(`
             <div style="min-width: 200px;">
-              <h3 style="margin: 0 0 8px 0; font-weight: bold;">${stop.name}</h3>
-              <p style="margin: 0; color: #666;">${
-                stop.type === "start" ? "Start Point" : 
-                stop.type === "end" ? "End Point" : 
-                `Stop ${index} of ${allStops.length - 2}`
-              }</p>
+              <h3 style="margin: 0 0 8px 0; font-weight: bold;">${
+                stop.name
+              }</h3>
+              <p style="margin: 0; color: #666;">Stop ${index + 1} of ${
+          selectedRoute.stops.length
+        }</p>
               <p style="margin: 4px 0 0 0; color: ${
                 stopStatus === "completed"
                   ? "#10B981"
@@ -238,7 +235,10 @@ const MapView = () => {
       });
 
       // Create route line
-      const routeCoordinates = allStops.map((stop) => [stop.lat, stop.lng]);
+      const routeCoordinates = selectedRoute.stops.map((stop) => [
+        stop.lat,
+        stop.lng,
+      ]);
       const routeLine = L.polyline(routeCoordinates, {
         color: "#3B82F6",
         weight: 4,
@@ -252,72 +252,7 @@ const MapView = () => {
     };
 
     updateMap();
-  }, [mapInstance, selectedAssignment, selectedStop]);
-
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg">Loading...</div>
-        </div>
-      </Layout>
-    );
-  }
-
-  // For regular users, show the old mock data view
-  if (user?.role !== "driver") {
-    return (
-      <Layout>
-        <div className="min-h-screen bg-gray-50">
-          <div className="container mx-auto px-4 py-6">
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Route Explorer
-              </h1>
-              <p className="text-gray-600">
-                View available bus routes and their stops in Dhaka
-              </p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-8 text-center">
-              <MapPin className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">
-                Map view is available for drivers with assigned routes.
-              </p>
-            </div>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
-
-  // Driver view
-  if (assignments.length === 0) {
-    return (
-      <Layout>
-        <div className="min-h-screen bg-gray-50">
-          <div className="container mx-auto px-4 py-6">
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                My Route
-              </h1>
-              <p className="text-gray-600">View and track your assigned route</p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-8 text-center">
-              <MapPin className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600 mb-2">
-                No routes assigned for today.
-              </p>
-              <p className="text-sm text-gray-500">
-                Check back later or contact your administrator.
-              </p>
-            </div>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
-
-  const allStops = getAllStops(selectedAssignment);
+  }, [mapInstance, selectedRoute, selectedStop, routeProgress]);
 
   return (
     <Layout>
@@ -325,83 +260,114 @@ const MapView = () => {
         <div className="container mx-auto px-4 py-6">
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              My Route
+              Route Explorer
             </h1>
-            <p className="text-gray-600">Track your assigned route progress</p>
+            <p className="text-gray-600">
+              Explore different bus routes and their stops in Dhaka
+            </p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Route Selection Sidebar */}
-            {assignments.length > 1 && (
-              <div className="lg:col-span-1 space-y-4">
-                <div className="bg-white rounded-lg shadow-md p-4">
-                  <h2 className="text-xl font-semibold mb-4">My Routes Today</h2>
-                  <div className="space-y-3">
-                    {assignments.map((assignment) => (
-                      <button
-                        key={assignment._id}
-                        onClick={() => setSelectedAssignment(assignment)}
-                        className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                          selectedAssignment?._id === assignment._id
-                            ? "border-blue-500 bg-blue-50"
-                            : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                        }`}
-                      >
-                        <div className="font-medium text-gray-900 mb-1">
-                          {assignment.presetRoute_id.name}
-                        </div>
-                        <div className="text-sm text-gray-600 mb-2">
-                          Start: {assignment.scheduledStartTime}
-                        </div>
-                        <div className="flex items-center gap-4 text-xs text-gray-500">
-                          <span className="flex items-center gap-1">
-                            <MapPin size={12} />
-                            {assignment.presetRoute_id.stops.length + 2} stops
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock size={12} />
-                            {assignment.presetRoute_id.estimatedTime}
-                          </span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+            <div className="lg:col-span-1 space-y-4">
+              <div className="bg-white rounded-lg shadow-md p-4">
+                <h2 className="text-xl font-semibold mb-4">Available Routes</h2>
+                <div className="space-y-3">
+                  {mockRoutes.map((route) => (
+                    <button
+                      key={route.id}
+                      onClick={() => {
+                        setSelectedRoute(route);
+                        setSelectedStop(null);
+                      }}
+                      className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                        selectedRoute.id === route.id
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                      }`}
+                    >
+                      <div className="font-medium text-gray-900 mb-1">
+                        {route.name}
+                      </div>
+                      <div className="text-sm text-gray-600 mb-2">
+                        {route.description}
+                      </div>
+                      <div className="flex items-center gap-4 text-xs text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <MapPin size={12} />
+                          {route.totalStops} stops
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock size={12} />
+                          {route.estimatedTime}
+                        </span>
+                        <span className="font-medium text-green-600">
+                          {route.fare}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </div>
-            )}
+
+              {/* Selected Stop Details */}
+              {selectedStop && (
+                <div className="bg-white rounded-lg shadow-md p-4">
+                  <h3 className="text-lg font-semibold mb-3">Selected Stop</h3>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="text-blue-500" size={16} />
+                      <span className="font-medium">{selectedStop.name}</span>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      Stop{" "}
+                      {selectedRoute.stops.findIndex(
+                        (s) => s.id === selectedStop.id
+                      ) + 1}{" "}
+                      of {selectedRoute.stops.length}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Driver Controls */}
+              {user?.role === "driver" && (
+                <div className="bg-white rounded-lg shadow-md p-4">
+                  <h3 className="text-lg font-semibold mb-3">
+                    Driver Controls
+                  </h3>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      <span>Completed</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                      <span>Current Stop</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
+                      <span>Upcoming</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Route Progress Column */}
-            <div className={assignments.length > 1 ? "lg:col-span-1" : "lg:col-span-1"}>
+            <div className="lg:col-span-1">
               <div className="bg-white rounded-lg shadow-md p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-semibold">
-                    Route Progress
-                  </h3>
-                  {isAllStopsCompleted(selectedAssignment) && (
-                    <button
-                      onClick={() => resetAssignment(selectedAssignment)}
-                      className="flex items-center gap-2 px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
-                    >
-                      <RefreshCw size={14} />
-                      Reset for Next Day
-                    </button>
-                  )}
-                </div>
-                
-                <div className="text-sm text-gray-600 mb-4">
-                  {selectedAssignment?.presetRoute_id.name}
-                  <br />
-                  Start Time: {selectedAssignment?.scheduledStartTime}
-                </div>
-
+                <h3 className="text-xl font-semibold mb-4">
+                  Route Progress - {selectedRoute.name}
+                </h3>
                 <div className="relative">
-                  {allStops.map((stop, index) => {
-                    const stopStatus = getStopStatus(selectedAssignment, index);
-                    const isLast = index === allStops.length - 1;
+                  {selectedRoute.stops.map((stop, index) => {
+                    const stopStatus = getStopStatus(selectedRoute.id, index);
+                    const isLast = index === selectedRoute.stops.length - 1;
 
                     return (
                       <div
-                        key={index}
+                        key={stop.id}
                         className="relative flex items-start mb-6"
                       >
                         {/* Vertical Line */}
@@ -428,12 +394,8 @@ const MapView = () => {
                           >
                             {stopStatus === "completed" ? (
                               <CheckCircle size={16} />
-                            ) : stop.type === "start" ? (
-                              "S"
-                            ) : stop.type === "end" ? (
-                              "E"
                             ) : (
-                              index
+                              index + 1
                             )}
                           </div>
                         </div>
@@ -443,18 +405,13 @@ const MapView = () => {
                           <button
                             onClick={() => setSelectedStop(stop)}
                             className={`text-left w-full p-3 rounded-lg border transition-all ${
-                              selectedStop?.name === stop.name
+                              selectedStop?.id === stop.id
                                 ? "border-blue-500 bg-blue-50"
                                 : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                             }`}
                           >
                             <div className="font-medium text-gray-900 mb-1">
                               {stop.name}
-                            </div>
-                            <div className="text-xs text-gray-500 mb-1">
-                              {stop.type === "start" ? "Start Point" : 
-                               stop.type === "end" ? "End Point" : 
-                               `Stop ${index}`}
                             </div>
                             <div
                               className={`text-sm ${
@@ -478,7 +435,7 @@ const MapView = () => {
                             stopStatus === "current" && (
                               <button
                                 onClick={() =>
-                                  markStopAsReached(selectedAssignment, index)
+                                  markStopAsReached(selectedRoute.id, index)
                                 }
                                 className="mt-2 w-full px-3 py-2 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors"
                               >
@@ -490,59 +447,23 @@ const MapView = () => {
                     );
                   })}
                 </div>
-
-                {/* Completion Message */}
-                {isAllStopsCompleted(selectedAssignment) && (
-                  <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <h4 className="font-semibold text-green-800 mb-2">
-                      🎉 All stops completed!
-                    </h4>
-                    <p className="text-sm text-green-700 mb-3">
-                      Great job! You've reached all stops on this route.
-                    </p>
-                    <button
-                      onClick={() => resetAssignment(selectedAssignment)}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-                    >
-                      <RefreshCw size={16} />
-                      Reset for Next Day
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
 
             {/* Map */}
-            <div className={assignments.length > 1 ? "lg:col-span-2" : "lg:col-span-3"}>
+            <div className="lg:col-span-2">
               <div className="bg-white rounded-lg shadow-md overflow-hidden">
                 <div className="p-4 border-b bg-gray-50">
                   <h3 className="text-lg font-semibold">
-                    {selectedAssignment?.presetRoute_id.name}
+                    {selectedRoute.name}
                   </h3>
                   <p className="text-sm text-gray-600 mt-1">
-                    Click "Mark as Reached" to update your progress
+                    {user?.role === "driver"
+                      ? "Click on stops in the progress column to mark them as reached"
+                      : "View real-time route progress"}
                   </p>
                 </div>
                 <div id="map" className="w-full h-[600px]"></div>
-              </div>
-
-              {/* Legend */}
-              <div className="bg-white rounded-lg shadow-md p-4 mt-4">
-                <h4 className="font-semibold mb-3">Legend</h4>
-                <div className="grid grid-cols-3 gap-3 text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-green-500 rounded-full"></div>
-                    <span>Completed</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-red-500 rounded-full"></div>
-                    <span>Current Stop</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-gray-500 rounded-full"></div>
-                    <span>Upcoming</span>
-                  </div>
-                </div>
               </div>
             </div>
           </div>

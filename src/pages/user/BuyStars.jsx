@@ -26,6 +26,8 @@ const BuyStars = () => {
       setBalance(response.data.stars);
     } catch (error) {
       console.error("Error fetching balance:", error);
+      // Set default balance to 0 if error
+      setBalance(0);
     }
   };
 
@@ -35,6 +37,8 @@ const BuyStars = () => {
       setTransactions(response.data);
     } catch (error) {
       console.error("Error fetching transactions:", error);
+      // Set empty transactions if error
+      setTransactions([]);
     }
   };
 
@@ -47,7 +51,11 @@ const BuyStars = () => {
       alert(`Successfully purchased ${amount} stars!`);
     } catch (error) {
       console.error("Error buying stars:", error);
-      alert("Failed to purchase stars. Please try again.");
+      const errorMessage =
+        error.response?.data?.error ||
+        error.message ||
+        "Failed to purchase stars";
+      alert(`Failed to purchase stars: ${errorMessage}`);
     } finally {
       setLoading(false);
     }

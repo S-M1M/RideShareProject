@@ -73,6 +73,16 @@ router.post("/stars/buy", auth, async (req, res) => {
 
     // Update user stars balance
     const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Initialize stars if undefined
+    if (typeof user.stars !== "number") {
+      user.stars = 0;
+    }
+
     user.stars += amount;
     await user.save();
 
@@ -91,6 +101,7 @@ router.post("/stars/buy", auth, async (req, res) => {
       transaction,
     });
   } catch (error) {
+    console.error("Error buying stars:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -99,8 +110,17 @@ router.post("/stars/buy", auth, async (req, res) => {
 router.get("/stars/balance", auth, async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select("stars");
-    res.json({ stars: user.stars });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Ensure stars field exists, default to 0 if not
+    const stars = typeof user.stars === "number" ? user.stars : 0;
+
+    res.json({ stars });
   } catch (error) {
+    console.error("Error fetching stars balance:", error);
     res.status(500).json({ error: error.message });
   }
 });
