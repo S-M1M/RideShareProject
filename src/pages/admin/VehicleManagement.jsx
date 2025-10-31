@@ -23,7 +23,7 @@ const VehicleManagement = () => {
     type: "bus",
     model: "",
     year: new Date().getFullYear(),
-    color: "",
+    color: "Blue",
     capacity: "",
     license_plate: "",
     status: "active",
@@ -62,17 +62,40 @@ const VehicleManagement = () => {
     setSuccess("");
 
     try {
+      // Ensure capacity is a number and license plate is uppercase
+      const vehicleData = {
+        type: formData.type,
+        model: formData.model.trim(),
+        year: formData.year || new Date().getFullYear(),
+        color: formData.color || "Blue",
+        capacity: parseInt(formData.capacity, 10),
+        license_plate: formData.license_plate.trim().toUpperCase(),
+        status: formData.status,
+      };
+
+      console.log("Submitting vehicle data:", vehicleData);
+
       if (editingVehicle) {
-        await api.put(`/admin/vehicles/${editingVehicle._id}`, formData);
+        const response = await api.put(`/admin/vehicles/${editingVehicle._id}`, vehicleData);
+        console.log("Update response:", response);
         setSuccess("Vehicle updated successfully");
       } else {
-        await api.post("/admin/vehicles", formData);
+        const response = await api.post("/admin/vehicles", vehicleData);
+        console.log("Create response:", response);
         setSuccess("Vehicle added successfully");
       }
       fetchVehicles();
       handleCloseModal();
+      
+      // Auto-clear success message after 3 seconds
+      setTimeout(() => setSuccess(""), 3000);
     } catch (error) {
-      setError(error.response?.data?.error || "Failed to save vehicle");
+      console.error("Error saving vehicle:", error);
+      console.error("Error response:", error.response);
+      setError(error.response?.data?.error || error.message || "Failed to save vehicle");
+      
+      // Auto-clear error message after 5 seconds
+      setTimeout(() => setError(""), 5000);
     }
   };
 
@@ -81,8 +104,8 @@ const VehicleManagement = () => {
     setFormData({
       type: vehicle.type,
       model: vehicle.model,
-      year: vehicle.year,
-      color: vehicle.color,
+      year: vehicle.year || new Date().getFullYear(),
+      color: vehicle.color || "Blue",
       capacity: vehicle.capacity,
       license_plate: vehicle.license_plate,
       status: vehicle.status,
@@ -96,8 +119,15 @@ const VehicleManagement = () => {
         await api.delete(`/admin/vehicles/${vehicleId}`);
         setSuccess("Vehicle deleted successfully");
         fetchVehicles();
+        
+        // Auto-clear success message after 3 seconds
+        setTimeout(() => setSuccess(""), 3000);
       } catch (error) {
+        console.error("Error deleting vehicle:", error);
         setError(error.response?.data?.error || "Failed to delete vehicle");
+        
+        // Auto-clear error message after 5 seconds
+        setTimeout(() => setError(""), 5000);
       }
     }
   };
@@ -109,7 +139,7 @@ const VehicleManagement = () => {
       type: "bus",
       model: "",
       year: new Date().getFullYear(),
-      color: "",
+      color: "Blue",
       capacity: "",
       license_plate: "",
       status: "active",
@@ -121,8 +151,7 @@ const VehicleManagement = () => {
     (vehicle) =>
       vehicle.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
       vehicle.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vehicle.license_plate.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vehicle.color.toLowerCase().includes(searchTerm.toLowerCase())
+      vehicle.license_plate.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getStatusColor = (status) => {
@@ -165,10 +194,7 @@ const VehicleManagement = () => {
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              Vehicle Management
-            </h2>
-            <p className="text-gray-600 mt-1">
+            <p className="text-gray-600">
               Manage all vehicles in your fleet
             </p>
           </div>
@@ -201,7 +227,7 @@ const VehicleManagement = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
             <input
               type="text"
-              placeholder="Search by type, model, license plate, or color..."
+              placeholder="Search by type, model, or license plate..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -291,9 +317,6 @@ const VehicleManagement = () => {
                             <div className="text-sm font-medium text-gray-900">
                               {vehicle.model}
                             </div>
-                            <div className="text-sm text-gray-500">
-                              {vehicle.year} • {vehicle.color}
-                            </div>
                           </div>
                         </div>
                       </td>
@@ -365,11 +388,14 @@ const VehicleManagement = () => {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {/* Vehicle Type - Fixed to Bus */}
                   <input type="hidden" name="type" value="bus" />
+                  {/* Year and Color - Hidden fields with default values */}
+                  <input type="hidden" name="year" value={formData.year} />
+                  <input type="hidden" name="color" value={formData.color} />
 
                   {/* Model */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Bus Model *
+                      Bus Number *
                     </label>
                     <input
                       type="text"
@@ -377,43 +403,12 @@ const VehicleManagement = () => {
                       value={formData.model}
                       onChange={handleInputChange}
                       required
-                      placeholder="e.g., Toyota Coaster, Ashok Leyland"
+                      placeholder="e.g., BS-123, RP-456"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
 
-                  {/* Year and Color */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Year *
-                      </label>
-                      <input
-                        type="number"
-                        name="year"
-                        value={formData.year}
-                        onChange={handleInputChange}
-                        required
-                        min="1990"
-                        max={new Date().getFullYear() + 1}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Color *
-                      </label>
-                      <input
-                        type="text"
-                        name="color"
-                        value={formData.color}
-                        onChange={handleInputChange}
-                        required
-                        placeholder="e.g., White, Blue"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
+
 
                   {/* Capacity */}
                   <div>

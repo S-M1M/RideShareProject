@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import Layout from "../../components/Layout";
-import { Plus, Search, Truck, Mail, Phone, Car, MapPin, Clock, X } from "lucide-react";
+import { Plus, Search, Truck, Mail, Phone, Car, MapPin, Clock, X, Edit, Trash2 } from "lucide-react";
 import api from "../../utils/api";
 
 const DriverManagement = () => {
   const [drivers, setDrivers] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -41,6 +42,25 @@ const DriverManagement = () => {
       driver.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       driver.email.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+
+  const handleDeleteDriver = async (driverId) => {
+    if (window.confirm("Are you sure you want to delete this driver?")) {
+      try {
+        console.log("Attempting to delete driver with ID:", driverId);
+        const response = await api.delete(`/admin/drivers/${driverId}`);
+        console.log("Delete response:", response);
+        alert("Driver deleted successfully");
+        fetchDrivers();
+      } catch (error) {
+        console.error("Delete error:", error);
+        console.error("Error response:", error.response);
+        alert(
+          "Error deleting driver: " +
+            (error.response?.data?.error || error.message)
+        );
+      }
+    }
+  };
 
   if (loading) {
     return (
@@ -124,8 +144,21 @@ const DriverManagement = () => {
                 >
                   Assign Route
                 </button>
-                <button className="flex-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-md hover:bg-blue-200 text-sm">
+                <button 
+                  onClick={() => {
+                    setSelectedDriver(driver);
+                    setShowEditModal(true);
+                  }}
+                  className="flex-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-md hover:bg-blue-200 text-sm flex items-center justify-center gap-1"
+                >
+                  <Edit size={14} />
                   Edit
+                </button>
+                <button 
+                  onClick={() => handleDeleteDriver(driver._id)}
+                  className="bg-red-100 text-red-700 px-3 py-1 rounded-md hover:bg-red-200 text-sm flex items-center justify-center"
+                >
+                  <Trash2 size={14} />
                 </button>
               </div>
             </div>
@@ -142,10 +175,25 @@ const DriverManagement = () => {
       {/* Add Driver Modal */}
       {showAddModal && (
         <AddDriverModal
-          vehicles={vehicles}
           onClose={() => setShowAddModal(false)}
           onSuccess={() => {
             setShowAddModal(false);
+            fetchDrivers();
+          }}
+        />
+      )}
+
+      {/* Edit Driver Modal */}
+      {showEditModal && selectedDriver && (
+        <EditDriverModal
+          driver={selectedDriver}
+          onClose={() => {
+            setShowEditModal(false);
+            setSelectedDriver(null);
+          }}
+          onSuccess={() => {
+            setShowEditModal(false);
+            setSelectedDriver(null);
             fetchDrivers();
           }}
         />
@@ -170,13 +218,12 @@ const DriverManagement = () => {
   );
 };
 
-const AddDriverModal = ({ vehicles, onClose, onSuccess }) => {
+const AddDriverModal = ({ onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
     phone: "",
-    assigned_vehicle_id: "",
   });
   const [loading, setLoading] = useState(false);
 
@@ -186,6 +233,7 @@ const AddDriverModal = ({ vehicles, onClose, onSuccess }) => {
 
     try {
       await api.post("/admin/drivers", formData);
+      alert("Driver added successfully!");
       onSuccess();
     } catch (error) {
       alert(
@@ -266,26 +314,133 @@ const AddDriverModal = ({ vehicles, onClose, onSuccess }) => {
             />
           </div>
 
+          <div className="flex space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loading ? "Adding..." : "Add Driver"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const EditDriverModal = ({ driver, onClose, onSuccess }) => {
+  const [formData, setFormData] = useState({
+    name: driver.name,
+    email: driver.email,
+    phone: driver.phone,
+    password: "", // Optional - only if changing password
+  });
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      // Only send password if it's been filled in
+      const updateData = { ...formData };
+      if (!updateData.password) {
+        delete updateData.password;
+      }
+      
+      await api.put(`/admin/drivers/${driver._id}`, updateData);
+      alert("Driver updated successfully!");
+      onSuccess();
+    } catch (error) {
+      alert(
+        "Error updating driver: " +
+          (error.response?.data?.error || error.message),
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg max-w-md w-full p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Edit Driver</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Assign Vehicle
+              Full Name
             </label>
-            <select
-              name="assigned_vehicle_id"
-              value={formData.assigned_vehicle_id}
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
               onChange={handleChange}
+              required
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">Select a vehicle</option>
-              {vehicles
-                .filter((v) => v.available)
-                .map((vehicle) => (
-                  <option key={vehicle._id} value={vehicle._id}>
-                    {vehicle.type} - {vehicle.license_plate} (Capacity:{" "}
-                    {vehicle.capacity})
-                  </option>
-                ))}
-            </select>
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Phone
+            </label>
+            <input
+              type="tel"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              New Password (leave blank to keep current)
+            </label>
+            <input
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Enter new password or leave blank"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
           </div>
 
           <div className="flex space-x-3 pt-4">
@@ -301,7 +456,7 @@ const AddDriverModal = ({ vehicles, onClose, onSuccess }) => {
               disabled={loading}
               className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50"
             >
-              {loading ? "Adding..." : "Add Driver"}
+              {loading ? "Updating..." : "Update Driver"}
             </button>
           </div>
         </form>

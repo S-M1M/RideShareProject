@@ -135,7 +135,7 @@ const AdminDashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <button
             onClick={() => navigate("/admin/users")}
             className="bg-blue-600 text-white rounded-lg p-4 hover:bg-blue-700 transition-colors text-center"

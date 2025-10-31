@@ -13,10 +13,12 @@ const vehicleSchema = new mongoose.Schema({
   year: {
     type: Number,
     required: true,
+    default: () => new Date().getFullYear(),
   },
   color: {
     type: String,
     required: true,
+    default: "Blue",
   },
   capacity: {
     type: Number,

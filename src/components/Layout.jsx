@@ -10,6 +10,7 @@ import {
   LogOut,
   Menu,
   X,
+  Truck,
 } from "lucide-react";
 
 const Layout = ({ children, title }) => {
@@ -40,6 +41,7 @@ const Layout = ({ children, title }) => {
         { to: "/admin/dashboard", label: "Dashboard", icon: Home },
         { to: "/admin/users", label: "Users", icon: User },
         { to: "/admin/drivers", label: "Drivers", icon: Car },
+        { to: "/admin/vehicles", label: "Vehicles", icon: Truck },
         { to: "/admin/routes", label: "Routes", icon: Map },
         { to: "/admin/finance", label: "Finance", icon: CreditCard },
       ];

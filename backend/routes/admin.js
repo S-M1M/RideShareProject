@@ -97,6 +97,60 @@ router.post("/drivers", auth, async (req, res) => {
   }
 });
 
+// Update driver
+router.put("/drivers/:id", auth, async (req, res) => {
+  try {
+    const { name, email, password, phone } = req.body;
+
+    // Check if email is being changed and if it's already in use
+    if (email) {
+      const existingDriver = await Driver.findOne({
+        email,
+        _id: { $ne: req.params.id },
+      });
+      if (existingDriver) {
+        return res.status(400).json({ error: "Email already in use" });
+      }
+    }
+
+    const updateData = { name, email, phone };
+    
+    // Only update password if provided
+    if (password) {
+      updateData.password = password;
+    }
+
+    const driver = await Driver.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    if (!driver) {
+      return res.status(404).json({ error: "Driver not found" });
+    }
+
+    res.json({ message: "Driver updated successfully", driver });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete driver
+router.delete("/drivers/:id", auth, async (req, res) => {
+  try {
+    const driver = await Driver.findByIdAndDelete(req.params.id);
+    
+    if (!driver) {
+      return res.status(404).json({ error: "Driver not found" });
+    }
+
+    res.json({ message: "Driver deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Vehicle management
 router.get("/vehicles", auth, async (req, res) => {
   try {
@@ -137,8 +191,8 @@ router.post("/vehicles", auth, async (req, res) => {
     const vehicle = new Vehicle({
       type,
       model,
-      year,
-      color,
+      year: year || new Date().getFullYear(),
+      color: color || "Blue",
       capacity,
       license_plate,
       status: status || "active",
@@ -178,9 +232,20 @@ router.put("/vehicles/:id", auth, async (req, res) => {
       }
     }
 
+    const updateData = {
+      type,
+      model,
+      year: year || new Date().getFullYear(),
+      color: color || "Blue",
+      capacity,
+      license_plate,
+      available,
+      status,
+    };
+
     const vehicle = await Vehicle.findByIdAndUpdate(
       req.params.id,
-      { type, model, year, color, capacity, license_plate, available, status },
+      updateData,
       { new: true, runValidators: true }
     );
 
