@@ -67,7 +67,10 @@ router.post("/stars/buy", auth, async (req, res) => {
   try {
     const { amount } = req.body;
 
-    console.log("Buy stars request - User ID from token:", req.user._id || req.user.id);
+    console.log(
+      "Buy stars request - User ID from token:",
+      req.user._id || req.user.id
+    );
     console.log("Buy stars request - Full user object:", req.user);
     console.log("Buy stars request - Amount:", amount);
 
@@ -85,7 +88,7 @@ router.post("/stars/buy", auth, async (req, res) => {
       console.error("User not found with ID:", userId);
       return res.status(404).json({ error: "User not found" });
     }
-    
+
     console.log("User found:", user.email);
 
     // Initialize stars if undefined

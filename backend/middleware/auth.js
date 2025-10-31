@@ -11,16 +11,16 @@ const auth = (req, res, next) => {
   try {
     const decoded = jwt.verify(
       token,
-      process.env.JWT_SECRET || "fallback_secret",
+      process.env.JWT_SECRET || "fallback_secret"
     );
-    
+
     // Normalize the user ID field - token uses 'userId' but routes expect '_id'
     req.user = {
       ...decoded,
       _id: decoded.userId || decoded._id,
-      id: decoded.userId || decoded.id || decoded._id
+      id: decoded.userId || decoded.id || decoded._id,
     };
-    
+
     console.log("Token is valid, decoded user:", req.user);
     next();
   } catch (error) {
