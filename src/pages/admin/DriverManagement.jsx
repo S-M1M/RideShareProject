@@ -467,11 +467,14 @@ const EditDriverModal = ({ driver, onClose, onSuccess }) => {
 
 const AssignRouteModal = ({ driver, vehicles, onClose, onSuccess }) => {
   const [presetRoutes, setPresetRoutes] = useState([]);
+  const today = new Date().toISOString().split("T")[0];
   const [formData, setFormData] = useState({
     presetRoute_id: "",
     vehicle_id: driver.assigned_vehicle_id?._id || "",
     scheduledStartTime: "08:00",
-    scheduledDate: new Date().toISOString().split("T")[0],
+    scheduledDate: today,
+    startDate: today,
+    endDate: today,
   });
   const [loading, setLoading] = useState(false);
   const [loadingRoutes, setLoadingRoutes] = useState(true);
@@ -496,13 +499,23 @@ const AssignRouteModal = ({ driver, vehicles, onClose, onSuccess }) => {
     setLoading(true);
 
     try {
-      await api.post("/admin/driver-assignments", {
+      const assignmentData = {
         driver_id: driver._id,
-        ...formData,
-      });
+        presetRoute_id: formData.presetRoute_id,
+        vehicle_id: formData.vehicle_id,
+        scheduledStartTime: formData.scheduledStartTime,
+        scheduledDate: formData.scheduledDate,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+      };
+      
+      console.log("Submitting assignment data:", assignmentData);
+      
+      await api.post("/admin/driver-assignments", assignmentData);
       alert("Route assigned successfully!");
       onSuccess();
     } catch (error) {
+      console.error("Assignment error:", error);
       alert(
         "Error assigning route: " +
           (error.response?.data?.error || error.message)
@@ -513,10 +526,26 @@ const AssignRouteModal = ({ driver, vehicles, onClose, onSuccess }) => {
   };
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+    
+    // When scheduledDate changes, update startDate and endDate to match
+    if (name === "scheduledDate") {
+      const newFormData = {
+        ...formData,
+        scheduledDate: value,
+        startDate: value,
+        endDate: value,
+      };
+      console.log("Updated form data (scheduledDate changed):", newFormData);
+      setFormData(newFormData);
+    } else {
+      const newFormData = {
+        ...formData,
+        [name]: value,
+      };
+      console.log("Updated form data:", newFormData);
+      setFormData(newFormData);
+    }
   };
 
   const selectedRoute = presetRoutes.find((r) => r._id === formData.presetRoute_id);

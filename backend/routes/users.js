@@ -163,4 +163,28 @@ router.get("/routes", async (req, res) => {
   }
 });
 
+// Get user's subscribed routes
+router.get("/my-routes", auth, async (req, res) => {
+  try {
+    // Find active subscriptions for user
+    const subscriptions = await Subscription.find({
+      user_id: req.user._id,
+      active: true,
+      end_date: { $gte: new Date() }
+    }).populate("preset_route_id");
+
+    // Extract unique routes
+    const routes = subscriptions
+      .map(sub => sub.preset_route_id)
+      .filter((route, index, self) => 
+        route && self.findIndex(r => r._id.toString() === route._id.toString()) === index
+      );
+
+    res.json(routes);
+  } catch (error) {
+    console.error("Error fetching user routes:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

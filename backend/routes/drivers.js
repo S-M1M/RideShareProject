@@ -238,4 +238,124 @@ router.post("/assignments/:id/reset", authenticateDriver, async (req, res) => {
   }
 });
 
+// Get passengers for driver's assigned route
+router.get("/passengers", authenticateDriver, async (req, res) => {
+  try {
+    const { date, routeId } = req.query;
+    
+    // Build query for driver's assignments
+    let assignmentQuery = { driver_id: req.driver._id };
+    
+    if (routeId) {
+      assignmentQuery.presetRoute_id = routeId;
+    }
+    
+    if (date) {
+      const startDate = new Date(date);
+      const endDate = new Date(date);
+      endDate.setHours(23, 59, 59, 999);
+      assignmentQuery.scheduledDate = { $gte: startDate, $lte: endDate };
+    }
+
+    // Get driver's assignments
+    const assignments = await DriverAssignment.find(assignmentQuery)
+      .populate("presetRoute_id");
+
+    if (assignments.length === 0) {
+      return res.json([]);
+    }
+
+    // Get preset route IDs
+    const presetRouteIds = assignments.map(a => a.presetRoute_id._id);
+
+    // Find all active subscriptions for these routes
+    const Subscription = (await import("../models/Subscription.js")).default;
+    const User = (await import("../models/User.js")).default;
+    
+    const subscriptions = await Subscription.find({
+      preset_route_id: { $in: presetRouteIds },
+      active: true,
+      end_date: { $gte: new Date() }
+    })
+    .populate("user_id", "name phone email")
+    .populate("preset_route_id", "name description");
+
+    // Group passengers by route and time
+    const passengersByRoute = [];
+    
+    for (const assignment of assignments) {
+      const routeSubscriptions = subscriptions.filter(
+        sub => sub.preset_route_id._id.toString() === assignment.presetRoute_id._id.toString()
+      );
+
+      if (routeSubscriptions.length > 0) {
+        passengersByRoute.push({
+          assignment: {
+            _id: assignment._id,
+            scheduledStartTime: assignment.scheduledStartTime,
+            scheduledDate: assignment.scheduledDate,
+            status: assignment.status
+          },
+          route: {
+            _id: assignment.presetRoute_id._id,
+            name: assignment.presetRoute_id.name,
+            description: assignment.presetRoute_id.description,
+            startPoint: assignment.presetRoute_id.startPoint,
+            endPoint: assignment.presetRoute_id.endPoint,
+            stops: assignment.presetRoute_id.stops
+          },
+          passengers: routeSubscriptions.map(sub => ({
+            user: {
+              _id: sub.user_id._id,
+              name: sub.user_id.name,
+              phone: sub.user_id.phone,
+              email: sub.user_id.email
+            },
+            pickup: {
+              location: sub.pickup_location,
+              stopName: sub.pickup_location.address
+            },
+            drop: {
+              location: sub.drop_location,
+              stopName: sub.drop_location.address
+            },
+            planType: sub.plan_type,
+            subscriptionId: sub._id,
+            schedule: sub.schedule
+          }))
+        });
+      }
+    }
+
+    res.json(passengersByRoute);
+  } catch (error) {
+    console.error("Error fetching passengers:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get driver's assigned routes (preset routes)
+router.get("/my-routes", authenticateDriver, async (req, res) => {
+  try {
+    const PresetRoute = (await import("../models/PresetRoute.js")).default;
+    
+    // Find all assignments for this driver
+    const assignments = await DriverAssignment.find({
+      driver_id: req.driver._id,
+      status: { $in: ["scheduled", "in-progress"] }
+    }).distinct("presetRoute_id");
+
+    // Get the preset routes
+    const routes = await PresetRoute.find({
+      _id: { $in: assignments },
+      active: true
+    });
+
+    res.json(routes);
+  } catch (error) {
+    console.error("Error fetching driver routes:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

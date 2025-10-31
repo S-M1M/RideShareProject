@@ -493,6 +493,8 @@ router.post("/driver-assignments", auth, requireAdmin, async (req, res) => {
       vehicle_id,
       scheduledStartTime,
       scheduledDate,
+      startDate,
+      endDate,
     } = req.body;
 
     // Check if driver exists
@@ -513,9 +515,18 @@ router.post("/driver-assignments", auth, requireAdmin, async (req, res) => {
       vehicle_id,
       scheduledStartTime,
       scheduledDate: new Date(scheduledDate),
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
     });
 
     await assignment.save();
+
+    // Update driver's assigned vehicle
+    if (vehicle_id) {
+      await Driver.findByIdAndUpdate(driver_id, {
+        assigned_vehicle_id: vehicle_id,
+      });
+    }
 
     const populatedAssignment = await DriverAssignment.findById(assignment._id)
       .populate("driver_id", "name email")

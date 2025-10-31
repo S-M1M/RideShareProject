@@ -1,74 +1,22 @@
 import React, { useEffect, useState } from "react";
-import { MapPin, Clock, CheckCircle } from "lucide-react";
+import { MapPin, Clock, CheckCircle, Bus } from "lucide-react";
 import Layout from "../../components/Layout";
 import { useAuth } from "../../contexts/AuthContext";
-
-const mockRoutes = [
-  {
-    id: 1,
-    name: "Route A - Gulshan to Motijheel",
-    description: "Express route via Tejgaon",
-    totalStops: 8,
-    estimatedTime: "45 min",
-    fare: "৳35",
-    stops: [
-      { id: 1, name: "Gulshan Circle 1", lat: 23.7808, lng: 90.4176 },
-      { id: 2, name: "Gulshan Avenue", lat: 23.7756, lng: 90.4125 },
-      { id: 3, name: "Banani Road 11", lat: 23.7741, lng: 90.4067 },
-      { id: 4, name: "Mohakhali Bus Stand", lat: 23.7697, lng: 90.3938 },
-      { id: 5, name: "Tejgaon Industrial Area", lat: 23.7547, lng: 90.3914 },
-      { id: 6, name: "Farmgate", lat: 23.7515, lng: 90.3896 },
-      { id: 7, name: "Karwan Bazar", lat: 23.7502, lng: 90.3897 },
-      { id: 8, name: "Motijheel", lat: 23.7338, lng: 90.4065 },
-    ],
-  },
-  {
-    id: 2,
-    name: "Route B - Dhanmondi to Uttara",
-    description: "North-bound express",
-    totalStops: 10,
-    estimatedTime: "55 min",
-    fare: "৳45",
-    stops: [
-      { id: 9, name: "Dhanmondi 27", lat: 23.7461, lng: 90.3742 },
-      { id: 10, name: "Dhanmondi 32", lat: 23.7489, lng: 90.3706 },
-      { id: 11, name: "Science Lab", lat: 23.7358, lng: 90.3753 },
-      { id: 12, name: "New Market", lat: 23.7268, lng: 90.3804 },
-      { id: 13, name: "Azimpur", lat: 23.7194, lng: 90.3847 },
-      { id: 14, name: "Nilkhet", lat: 23.7267, lng: 90.3889 },
-      { id: 15, name: "Shahbagh", lat: 23.7389, lng: 90.3944 },
-      { id: 16, name: "Matsya Bhaban", lat: 23.7542, lng: 90.3879 },
-      { id: 17, name: "Airport Road", lat: 23.8103, lng: 90.4125 },
-      { id: 18, name: "Uttara Sector 3", lat: 23.8759, lng: 90.3795 },
-    ],
-  },
-  {
-    id: 3,
-    name: "Route C - Mirpur to Wari",
-    description: "Central route via Newmarket",
-    totalStops: 9,
-    estimatedTime: "50 min",
-    fare: "৳40",
-    stops: [
-      { id: 19, name: "Mirpur 10", lat: 23.8069, lng: 90.3683 },
-      { id: 20, name: "Kazipara", lat: 23.7958, lng: 90.3747 },
-      { id: 21, name: "Shewrapara", lat: 23.7847, lng: 90.3811 },
-      { id: 22, name: "Agargaon", lat: 23.7736, lng: 90.3875 },
-      { id: 23, name: "Sher-e-Bangla Nagar", lat: 23.7625, lng: 90.3939 },
-      { id: 24, name: "Dhanmondi", lat: 23.7461, lng: 90.3742 },
-      { id: 25, name: "New Market", lat: 23.7268, lng: 90.3804 },
-      { id: 26, name: "Paltan", lat: 23.7347, lng: 90.4161 },
-      { id: 27, name: "Wari", lat: 23.7234, lng: 90.4289 },
-    ],
-  },
-];
+import { getUserSubscriptions } from "../../utils/subscriptionStorage";
 
 const MapView = () => {
   const { user } = useAuth();
-  const [selectedRoute, setSelectedRoute] = useState(mockRoutes[0]);
+  const [routes, setRoutes] = useState([]);
+  const [selectedRoute, setSelectedRoute] = useState(null);
   const [selectedStop, setSelectedStop] = useState(null);
   const [mapInstance, setMapInstance] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [routeProgress, setRouteProgress] = useState({});
+
+  // Fetch user's subscribed routes from localStorage
+  useEffect(() => {
+    fetchUserRoutes();
+  }, [user]);
 
   // Load route progress from localStorage
   useEffect(() => {
@@ -77,38 +25,6 @@ const MapView = () => {
       setRouteProgress(JSON.parse(savedProgress));
     }
   }, []);
-
-  // Save route progress to localStorage
-  const saveProgress = (progress) => {
-    setRouteProgress(progress);
-    localStorage.setItem("routeProgress", JSON.stringify(progress));
-  };
-
-  // Get current stop index for a route
-  const getCurrentStopIndex = (routeId) => {
-    return routeProgress[routeId]?.currentStopIndex || 0;
-  };
-
-  // Mark a stop as reached (driver only)
-  const markStopAsReached = (routeId, stopIndex) => {
-    if (user?.role !== "driver") return;
-
-    const newProgress = {
-      ...routeProgress,
-      [routeId]: {
-        currentStopIndex: stopIndex + 1,
-      },
-    };
-    saveProgress(newProgress);
-  };
-
-  // Get stop status
-  const getStopStatus = (routeId, stopIndex) => {
-    const currentIndex = getCurrentStopIndex(routeId);
-    if (stopIndex < currentIndex) return "completed";
-    if (stopIndex === currentIndex) return "current";
-    return "upcoming";
-  };
 
   // Initialize map
   useEffect(() => {
@@ -147,7 +63,7 @@ const MapView = () => {
 
   // Update map markers when route changes
   useEffect(() => {
-    if (!mapInstance) return;
+    if (!mapInstance || !selectedRoute) return;
 
     const updateMap = async () => {
       const L = (await import("leaflet")).default;
@@ -200,60 +116,194 @@ const MapView = () => {
 
         const marker = L.marker([stop.lat, stop.lng], {
           icon: customIcon,
-        }).addTo(mapInstance).bindPopup(`
-            <div style="min-width: 200px;">
-              <h3 style="margin: 0 0 8px 0; font-weight: bold;">${
-                stop.name
-              }</h3>
-              <p style="margin: 0; color: #666;">Stop ${index + 1} of ${
-          selectedRoute.stops.length
-        }</p>
-              <p style="margin: 4px 0 0 0; color: ${
-                stopStatus === "completed"
-                  ? "#10B981"
-                  : stopStatus === "current"
-                  ? "#EF4444"
-                  : "#6B7280"
-              };">
-                Status: ${
-                  stopStatus === "completed"
-                    ? "Completed"
-                    : stopStatus === "current"
-                    ? "Current Stop"
-                    : "Upcoming"
-                }
-              </p>
-            </div>
-          `);
+        })
+          .addTo(mapInstance)
+          .bindPopup(
+            `<b>${stop.name}</b><br/>Stop ${index + 1}<br/>Status: ${stopStatus}`
+          );
 
-        markers.push(marker);
-
-        // Add click event
         marker.on("click", () => {
           setSelectedStop(stop);
         });
+
+        markers.push(marker);
       });
 
-      // Create route line
+      // Draw route line
       const routeCoordinates = selectedRoute.stops.map((stop) => [
         stop.lat,
         stop.lng,
       ]);
-      const routeLine = L.polyline(routeCoordinates, {
+      L.polyline(routeCoordinates, {
         color: "#3B82F6",
         weight: 4,
         opacity: 0.7,
-        dashArray: "10, 5",
       }).addTo(mapInstance);
 
       // Fit map to show all markers
-      const group = new L.featureGroup(markers);
-      mapInstance.fitBounds(group.getBounds().pad(0.1));
+      if (markers.length > 0) {
+        const group = L.featureGroup(markers);
+        mapInstance.fitBounds(group.getBounds().pad(0.1));
+      }
     };
 
     updateMap();
   }, [mapInstance, selectedRoute, selectedStop, routeProgress]);
 
+  const fetchUserRoutes = async () => {
+    try {
+      setLoading(true);
+      
+      if (!user) {
+        setRoutes([]);
+        setLoading(false);
+        return;
+      }
+
+      // Get user ID (support both _id and id)
+      const userId = user._id || user.id;
+      
+      // Get subscriptions from localStorage
+      const subscriptions = getUserSubscriptions(userId);
+      console.log("User's subscriptions from localStorage:", subscriptions);
+      
+      // Filter active subscriptions
+      const activeSubscriptions = subscriptions.filter(sub => {
+        const endDate = new Date(sub.endDate);
+        const now = new Date();
+        return sub.status === 'active' && endDate >= now;
+      });
+
+      console.log("Active subscriptions:", activeSubscriptions);
+      
+      // Transform subscriptions to route format
+      // Group by route to avoid duplicates
+      const routesMap = new Map();
+      
+      activeSubscriptions.forEach(sub => {
+        const routeId = sub.routeId || sub.preset_route_id;
+        
+        if (!routesMap.has(routeId)) {
+          // Extract stops from subscription or create from pickup/drop
+          const stops = [];
+          
+          // Add pickup stop
+          if (sub.pickupStopName && sub.pickup_location) {
+            stops.push({
+              id: sub.pickupStopId || `pickup_${routeId}`,
+              name: sub.pickupStopName,
+              lat: sub.pickup_location.latitude,
+              lng: sub.pickup_location.longitude,
+              type: 'pickup'
+            });
+          }
+          
+          // Add drop stop
+          if (sub.dropStopName && sub.drop_location) {
+            stops.push({
+              id: sub.dropStopId || `drop_${routeId}`,
+              name: sub.dropStopName,
+              lat: sub.drop_location.latitude,
+              lng: sub.drop_location.longitude,
+              type: 'drop'
+            });
+          }
+
+          routesMap.set(routeId, {
+            id: routeId,
+            name: sub.routeName || "My Route",
+            description: `${sub.plan_type} subscription - ${sub.timeSlot}`,
+            totalStops: stops.length,
+            estimatedTime: "N/A",
+            fare: `${sub.price} points`,
+            stops: stops,
+            subscription: sub
+          });
+        }
+      });
+
+      const transformedRoutes = Array.from(routesMap.values());
+      console.log("Transformed routes:", transformedRoutes);
+
+      setRoutes(transformedRoutes);
+      if (transformedRoutes.length > 0) {
+        setSelectedRoute(transformedRoutes[0]);
+      }
+    } catch (error) {
+      console.error("Error fetching user routes:", error);
+      setRoutes([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Save route progress to localStorage
+  const saveProgress = (progress) => {
+    setRouteProgress(progress);
+    localStorage.setItem("routeProgress", JSON.stringify(progress));
+  };
+
+  // Get current stop index for a route
+  const getCurrentStopIndex = (routeId) => {
+    return routeProgress[routeId]?.currentStopIndex || 0;
+  };
+
+  // Mark a stop as reached (driver only)
+  const markStopAsReached = (routeId, stopIndex) => {
+    if (user?.role !== "driver") return;
+
+    const newProgress = {
+      ...routeProgress,
+      [routeId]: {
+        currentStopIndex: stopIndex + 1,
+      },
+    };
+    saveProgress(newProgress);
+  };
+
+  // Get stop status
+  const getStopStatus = (routeId, stopIndex) => {
+    const currentIndex = getCurrentStopIndex(routeId);
+    if (stopIndex < currentIndex) return "completed";
+    if (stopIndex === currentIndex) return "current";
+    return "upcoming";
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <Layout title="My Routes - Map View">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">Loading your routes...</div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // No routes state
+  if (routes.length === 0) {
+    return (
+      <Layout title="My Routes - Map View">
+        <div className="flex flex-col items-center justify-center h-64 text-center">
+          <Bus className="w-16 h-16 text-gray-300 mb-4" />
+          <h3 className="text-xl font-semibold text-gray-700 mb-2">
+            No Subscribed Routes
+          </h3>
+          <p className="text-gray-500 mb-4">
+            You haven't subscribed to any routes yet.
+          </p>
+          <a
+            href="/subscription"
+            className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700"
+          >
+            Subscribe to a Route
+          </a>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Main render
   return (
     <Layout>
       <div className="min-h-screen bg-gray-50">
@@ -271,9 +321,9 @@ const MapView = () => {
             {/* Route Selection Sidebar */}
             <div className="lg:col-span-1 space-y-4">
               <div className="bg-white rounded-lg shadow-md p-4">
-                <h2 className="text-xl font-semibold mb-4">Available Routes</h2>
+                <h2 className="text-xl font-semibold mb-4">My Routes</h2>
                 <div className="space-y-3">
-                  {mockRoutes.map((route) => (
+                  {routes.map((route) => (
                     <button
                       key={route.id}
                       onClick={() => {
