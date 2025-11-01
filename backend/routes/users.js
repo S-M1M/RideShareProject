@@ -5,6 +5,7 @@ import Subscription from "../models/Subscription.js";
 import Ride from "../models/Ride.js";
 import StarTransaction from "../models/StarTransaction.js";
 import PresetRoute from "../models/PresetRoute.js";
+import DriverAssignment from "../models/DriverAssignment.js";
 
 const router = express.Router();
 
@@ -180,9 +181,76 @@ router.get("/my-routes", auth, async (req, res) => {
         route && self.findIndex(r => r._id.toString() === route._id.toString()) === index
       );
 
-    res.json(routes);
+    // For each route, find today's active driver assignment to get progress
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const routesWithProgress = await Promise.all(routes.map(async (route) => {
+      // Find active assignment for this route today
+      const assignment = await DriverAssignment.findOne({
+        presetRoute_id: route._id,
+        startDate: { $lte: today },
+        endDate: { $gte: today },
+        status: { $ne: "cancelled" }
+      }).populate("driver_id", "name email");
+
+      return {
+        ...route.toObject(),
+        activeAssignment: assignment ? {
+          _id: assignment._id,
+          currentStopIndex: assignment.currentStopIndex || 0,
+          status: assignment.status,
+          scheduledStartTime: assignment.scheduledStartTime,
+          driver: assignment.driver_id ? {
+            _id: assignment.driver_id._id,
+            name: assignment.driver_id.name,
+            email: assignment.driver_id.email
+          } : null
+        } : null
+      };
+    }));
+
+    res.json(routesWithProgress);
   } catch (error) {
     console.error("Error fetching user routes:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get user's TODAY routes (similar to driver's today routes)
+router.get("/today-routes", auth, async (req, res) => {
+  try {
+    const { date } = req.query;
+    const targetDate = date ? new Date(date) : new Date();
+    targetDate.setHours(0, 0, 0, 0);
+
+    // Find user's active subscriptions
+    const subscriptions = await Subscription.find({
+      user_id: req.user._id,
+      active: true,
+      start_date: { $lte: targetDate },
+      end_date: { $gte: targetDate }
+    });
+
+    // Get route IDs from subscriptions
+    const routeIds = subscriptions.map(sub => sub.preset_route_id);
+
+    // Find driver assignments for these routes TODAY
+    const assignments = await DriverAssignment.find({
+      presetRoute_id: { $in: routeIds },
+      startDate: { $lte: targetDate },
+      endDate: { $gte: targetDate },
+      status: { $ne: "cancelled" }
+    })
+      .populate("presetRoute_id")
+      .populate("driver_id", "name email phone")
+      .populate("vehicle_id", "license_plate model");
+
+    res.json(assignments);
+  } catch (error) {
+    console.error("Error fetching today's routes:", error);
     res.status(500).json({ error: error.message });
   }
 });

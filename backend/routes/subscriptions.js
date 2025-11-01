@@ -470,6 +470,41 @@ router.post("/create-with-stars", auth, async (req, res) => {
       return res.status(400).json({ error: "Invalid plan type" });
     }
 
+    // Verify preset route exists
+    const presetRoute = await PresetRoute.findById(preset_route_id);
+    if (!presetRoute) {
+      return res.status(404).json({ error: "Route not found" });
+    }
+
+    // Find active driver assignment for this route today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const assignment = await DriverAssignment.findOne({
+      presetRoute_id: preset_route_id,
+      startDate: { $lte: today },
+      endDate: { $gte: today },
+      status: { $ne: "cancelled" },
+    });
+
+    // Validate subscription time against route schedule
+    if (assignment && assignment.scheduledStartTime && time_slot) {
+      // Convert times to comparable format (HH:MM)
+      const routeStartTime = assignment.scheduledStartTime;
+      const userPickupTime = time_slot;
+
+      // Compare times (basic string comparison works for HH:MM format)
+      if (userPickupTime < routeStartTime) {
+        return res.status(400).json({
+          error: `Cannot subscribe for pickup before route start time. Route starts at ${routeStartTime}, you selected ${userPickupTime}`,
+          routeStartTime: routeStartTime,
+          selectedTime: userPickupTime,
+        });
+      }
+    }
+
     // Calculate stars cost based on plan type
     const starsCostMap = {
       daily: 10,
@@ -497,12 +532,6 @@ router.post("/create-with-stars", auth, async (req, res) => {
       });
     }
 
-    // Verify preset route exists
-    const presetRoute = await PresetRoute.findById(preset_route_id);
-    if (!presetRoute) {
-      return res.status(404).json({ error: "Route not found" });
-    }
-
     // Calculate dates
     const startDate = new Date();
     let endDate = new Date();
@@ -528,7 +557,11 @@ router.post("/create-with-stars", auth, async (req, res) => {
       price: 0,
       starsCost,
       pickup_location,
+      pickup_stop_id,
+      pickup_stop_name,
       drop_location,
+      drop_stop_id,
+      drop_stop_name,
       distance,
       active: true,
       schedule: {
@@ -566,4 +599,329 @@ router.post("/create-with-stars", auth, async (req, res) => {
   }
 });
 
+// NEW: Purchase subscription based on rides
+router.post("/purchase-with-rides", auth, async (req, res) => {
+  try {
+    const {
+      ride_id, // Initial ride user selected
+      preset_route_id,
+      pickup_stop_id,
+      pickup_stop_name,
+      drop_stop_id,
+      drop_stop_name,
+      plan_type,
+      stops_count, // Number of stops between pickup and drop
+    } = req.body;
+
+    // Validate required fields
+    if (!ride_id || !preset_route_id || !pickup_stop_id || !drop_stop_id || !plan_type || !stops_count) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    // Get the initial ride to extract scheduledTime and start date
+    const initialRide = await Ride.findById(ride_id)
+      .populate("presetRoute_id")
+      .populate("vehicle_id");
+    
+    if (!initialRide) {
+      return res.status(404).json({ error: "Ride not found" });
+    }
+
+    // Calculate duration based on plan
+    let durationDays;
+    let payableDays;
+    
+    switch (plan_type) {
+      case "daily":
+        durationDays = 1;
+        payableDays = 1;
+        break;
+      case "weekly":
+        durationDays = 7;
+        payableDays = 6; // 1 day free
+        break;
+      case "monthly":
+        durationDays = 30;
+        payableDays = 25; // 5 days free
+        break;
+      default:
+        return res.status(400).json({ error: "Invalid plan type" });
+    }
+
+    // Calculate date range
+    const startDate = new Date(initialRide.rideDate);
+    startDate.setHours(0, 0, 0, 0);
+    
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + durationDays - 1);
+    endDate.setHours(23, 59, 59, 999);
+
+    // Find all matching rides (same route + time) in date range
+    const matchingRides = await Ride.find({
+      presetRoute_id: preset_route_id,
+      scheduledStartTime: initialRide.scheduledStartTime,
+      rideDate: { $gte: startDate, $lte: endDate },
+      status: { $ne: "cancelled" },
+    }).populate("vehicle_id");
+
+    if (matchingRides.length === 0) {
+      return res.status(404).json({ error: "No matching rides found for the selected period" });
+    }
+
+    // Check capacity for ALL rides
+    for (const ride of matchingRides) {
+      const subscribedCount = await Subscription.countDocuments({
+        ride_ids: ride._id,
+        active: true,
+      });
+
+      if (!ride.vehicle_id) {
+        return res.status(400).json({ 
+          error: `No vehicle assigned to ride on ${ride.rideDate.toLocaleDateString()}` 
+        });
+      }
+
+      if (subscribedCount >= ride.vehicle_id.capacity) {
+        return res.status(400).json({
+          error: `Ride on ${ride.rideDate.toLocaleDateString()} is full`,
+          fullRideDate: ride.rideDate,
+        });
+      }
+    }
+
+    // Calculate pricing
+    const dailyCost = stops_count * 10; // 10 stars per stop
+    const totalCost = dailyCost * payableDays;
+
+    // Check user's stars balance
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    if (user.stars < totalCost) {
+      return res.status(400).json({
+        error: "Insufficient stars",
+        required: totalCost,
+        available: user.stars,
+        shortage: totalCost - user.stars,
+      });
+    }
+
+    // Deduct stars
+    user.stars -= totalCost;
+    await user.save();
+
+    // Create subscription
+    const subscription = new Subscription({
+      user_id: req.user._id,
+      ride_ids: matchingRides.map(r => r._id),
+      preset_route_id,
+      scheduledTime: initialRide.scheduledStartTime,
+      plan_type,
+      start_date: startDate,
+      end_date: endDate,
+      pickup_stop_id,
+      pickup_stop_name,
+      drop_stop_id,
+      drop_stop_name,
+      pickup_location: {
+        latitude: 0, // These can be populated from stop data if needed
+        longitude: 0,
+      },
+      drop_location: {
+        latitude: 0,
+        longitude: 0,
+      },
+      price: totalCost,
+      starsCost: totalCost,
+      distance: stops_count, // Reusing distance field to store stops count
+      active: true,
+      cancelled_ride_ids: [],
+    });
+
+    await subscription.save();
+
+    // Create star transaction
+    await StarTransaction.create({
+      user_id: req.user._id,
+      type: "spend",
+      amount: totalCost,
+      description: `Purchased ${plan_type} subscription (${durationDays} days, ${matchingRides.length} rides)`,
+      relatedSubscription: subscription._id,
+      balanceAfter: user.stars,
+    });
+
+    res.json({
+      message: "Subscription purchased successfully",
+      subscription,
+      ridesCount: matchingRides.length,
+      totalCost,
+      starsRemaining: user.stars,
+    });
+  } catch (error) {
+    console.error("Error purchasing subscription:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// NEW: Cancel a ride from subscription
+router.post("/cancel-ride", auth, async (req, res) => {
+  try {
+    const { subscription_id, ride_id } = req.body;
+
+    if (!subscription_id || !ride_id) {
+      return res.status(400).json({ error: "Missing subscription_id or ride_id" });
+    }
+
+    // Get subscription
+    const subscription = await Subscription.findById(subscription_id);
+    if (!subscription) {
+      return res.status(404).json({ error: "Subscription not found" });
+    }
+
+    // Verify user owns this subscription
+    if (subscription.user_id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    // Check if ride is in subscription
+    if (!subscription.ride_ids.includes(ride_id)) {
+      return res.status(400).json({ error: "Ride not found in subscription" });
+    }
+
+    // Check if already cancelled
+    const alreadyCancelled = subscription.cancelled_ride_ids.some(
+      cr => cr.ride_id.toString() === ride_id.toString()
+    );
+    if (alreadyCancelled) {
+      return res.status(400).json({ error: "Ride already cancelled" });
+    }
+
+    // Get ride details
+    const ride = await Ride.findById(ride_id);
+    if (!ride) {
+      return res.status(404).json({ error: "Ride not found" });
+    }
+
+    // Check cancellation deadline (12 hours before scheduled start)
+    const rideDateTime = new Date(ride.rideDate);
+    const [time, period] = ride.scheduledStartTime.split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+    
+    if (period === 'PM' && hours !== 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+    
+    rideDateTime.setHours(hours, minutes, 0, 0);
+    
+    const now = new Date();
+    const hoursUntilRide = (rideDateTime - now) / (1000 * 60 * 60);
+    
+    if (hoursUntilRide < 12) {
+      return res.status(400).json({
+        error: "Cannot cancel ride within 12 hours of scheduled start time",
+        hoursUntilRide: hoursUntilRide.toFixed(1),
+      });
+    }
+
+    // Check ride status
+    if (ride.status !== "scheduled") {
+      return res.status(400).json({
+        error: `Cannot cancel ride with status: ${ride.status}`,
+      });
+    }
+
+    // Calculate refund (50% of single day cost)
+    const dailyCost = subscription.distance * 10; // distance stores stops_count
+    const refundAmount = dailyCost * 0.5;
+
+    // Update user stars
+    const user = await User.findById(req.user._id);
+    user.stars += refundAmount;
+    await user.save();
+
+    // Add to cancelled rides
+    subscription.cancelled_ride_ids.push({
+      ride_id: ride_id,
+      cancelled_at: new Date(),
+      refund_amount: refundAmount,
+    });
+    await subscription.save();
+
+    // Create refund transaction
+    await StarTransaction.create({
+      user_id: req.user._id,
+      type: "earn",
+      amount: refundAmount,
+      description: `Refund for cancelled ride on ${ride.rideDate.toLocaleDateString()}`,
+      relatedSubscription: subscription._id,
+      balanceAfter: user.stars,
+    });
+
+    res.json({
+      message: "Ride cancelled successfully",
+      refundAmount,
+      starsBalance: user.stars,
+      cancelledRide: {
+        ride_id,
+        rideDate: ride.rideDate,
+        scheduledTime: ride.scheduledStartTime,
+      },
+    });
+  } catch (error) {
+    console.error("Error cancelling ride:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// NEW: Get active subscriptions with upcoming rides
+router.get("/active-with-rides", auth, async (req, res) => {
+  try {
+    const now = new Date();
+    
+    const subscriptions = await Subscription.find({
+      user_id: req.user._id,
+      active: true,
+      end_date: { $gte: now }, // Only subscriptions that haven't ended
+    })
+      .populate("preset_route_id", "name description")
+      .populate("ride_ids");
+
+    // Filter to only show subscriptions with upcoming rides
+    const activeSubscriptions = subscriptions
+      .map(sub => {
+        // Filter out cancelled rides and past rides
+        const upcomingRides = sub.ride_ids.filter(ride => {
+          const isCancelled = sub.cancelled_ride_ids.some(
+            cr => cr.ride_id.toString() === ride._id.toString()
+          );
+          const rideDate = new Date(ride.rideDate);
+          return !isCancelled && rideDate >= now;
+        });
+
+        if (upcomingRides.length === 0) return null;
+
+        return {
+          _id: sub._id,
+          route: sub.preset_route_id,
+          scheduledTime: sub.scheduledTime,
+          planType: sub.plan_type,
+          pickupStop: sub.pickup_stop_name,
+          dropStop: sub.drop_stop_name,
+          startDate: sub.start_date,
+          endDate: sub.end_date,
+          upcomingRidesCount: upcomingRides.length,
+          nextRideDate: upcomingRides[0]?.rideDate,
+        };
+      })
+      .filter(sub => sub !== null);
+
+    res.json(activeSubscriptions);
+  } catch (error) {
+    console.error("Error fetching active subscriptions:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
+

@@ -6,15 +6,37 @@ const subscriptionSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
+  ride_ids: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Ride",
+  }],
+  cancelled_ride_ids: [{
+    ride_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Ride",
+    },
+    cancelled_at: {
+      type: Date,
+      default: Date.now,
+    },
+    refund_amount: {
+      type: Number,
+      default: 0,
+    },
+  }],
   driver_assignment_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "DriverAssignment",
-    required: false, // Optional for backward compatibility
+    required: false, // Deprecated - for backward compatibility
   },
   preset_route_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "PresetRoute",
-    required: false, // Optional for backward compatibility
+    required: true,
+  },
+  scheduledTime: {
+    type: String, // e.g., "08:30 AM"
+    required: true,
   },
   plan_type: {
     type: String,
@@ -54,10 +76,26 @@ const subscriptionSchema = new mongoose.Schema({
     longitude: { type: Number, required: true },
     address: String,
   },
+  pickup_stop_id: {
+    type: String, // Can be stop._id or special IDs like "start" or "end"
+    required: false,
+  },
+  pickup_stop_name: {
+    type: String,
+    required: false,
+  },
   drop_location: {
     latitude: { type: Number, required: true },
     longitude: { type: Number, required: true },
     address: String,
+  },
+  drop_stop_id: {
+    type: String, // Can be stop._id or special IDs like "start" or "end"
+    required: false,
+  },
+  drop_stop_name: {
+    type: String,
+    required: false,
   },
   active: {
     type: Boolean,

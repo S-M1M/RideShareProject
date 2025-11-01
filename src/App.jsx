@@ -32,6 +32,7 @@ import UserManagement from "./pages/admin/UserManagement";
 import DriverManagement from "./pages/admin/DriverManagement";
 import VehicleManagement from "./pages/admin/VehicleManagement";
 import RouteAssignment from "./pages/admin/RouteAssignment";
+import RidesManagement from "./pages/admin/RidesManagement";
 import Finance from "./pages/admin/Finance";
 
 function App() {
@@ -108,7 +109,7 @@ function App() {
               }
             />
             <Route
-              path="/driver/assignments/:id/map"
+              path="/driver/map"
               element={
                 <ProtectedRoute role="driver">
                   <DriverMapView />
@@ -154,6 +155,14 @@ function App() {
               element={
                 <ProtectedRoute role="admin">
                   <RouteAssignment />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/rides"
+              element={
+                <ProtectedRoute role="admin">
+                  <RidesManagement />
                 </ProtectedRoute>
               }
             />

@@ -358,4 +358,136 @@ router.get("/my-routes", authenticateDriver, async (req, res) => {
   }
 });
 
+// Get passengers at a specific stop for an assignment
+router.get("/assignments/:id/passengers-at-stop", authenticateDriver, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { stopId } = req.query;
+    const Subscription = (await import("../models/Subscription.js")).default;
+    const User = (await import("../models/User.js")).default;
+
+    if (!stopId) {
+      return res.status(400).json({ error: "stopId query parameter is required" });
+    }
+
+    // Find the assignment
+    const assignment = await DriverAssignment.findById(id).populate("presetRoute_id");
+    if (!assignment) {
+      return res.status(404).json({ error: "Assignment not found" });
+    }
+
+    // Verify driver owns this assignment
+    if (assignment.driver_id.toString() !== req.driver._id.toString()) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Find all active subscriptions for this route with pickup at this stop
+    const subscriptions = await Subscription.find({
+      preset_route_id: assignment.presetRoute_id._id,
+      pickup_stop_id: stopId,
+      active: true,
+      start_date: { $lte: today },
+      end_date: { $gte: today }
+    }).populate("user_id", "name email phone");
+
+    // Map to passenger format
+    const passengers = subscriptions.map(sub => ({
+      subscriptionId: sub._id,
+      user: {
+        id: sub.user_id._id,
+        name: sub.user_id.name,
+        email: sub.user_id.email,
+        phone: sub.user_id.phone
+      },
+      pickupStop: {
+        id: sub.pickup_stop_id,
+        name: sub.pickup_stop_name
+      },
+      dropStop: {
+        id: sub.drop_stop_id,
+        name: sub.drop_stop_name
+      },
+      attendance: assignment.attendance?.find(a => 
+        a.userId.toString() === sub.user_id._id.toString() && 
+        a.stopId === stopId
+      )
+    }));
+
+    res.json({
+      assignmentId: id,
+      stopId,
+      stopName: assignment.presetRoute_id.stops.find(s => s._id.toString() === stopId)?.name || stopId,
+      passengers
+    });
+  } catch (error) {
+    console.error("Error fetching passengers at stop:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Mark attendance for a user at a stop
+router.put("/assignments/:id/attendance", authenticateDriver, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId, stopId, status } = req.body; // status: 'present' or 'absent'
+
+    if (!userId || !stopId || !status) {
+      return res.status(400).json({ error: "userId, stopId, and status are required" });
+    }
+
+    if (!['present', 'absent'].includes(status)) {
+      return res.status(400).json({ error: "status must be 'present' or 'absent'" });
+    }
+
+    // Find the assignment
+    const assignment = await DriverAssignment.findById(id);
+    if (!assignment) {
+      return res.status(404).json({ error: "Assignment not found" });
+    }
+
+    // Verify driver owns this assignment
+    if (assignment.driver_id.toString() !== req.driver._id.toString()) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    // Initialize attendance array if not exists
+    if (!assignment.attendance) {
+      assignment.attendance = [];
+    }
+
+    // Find existing attendance record
+    const existingIndex = assignment.attendance.findIndex(a => 
+      a.userId.toString() === userId && a.stopId === stopId
+    );
+
+    const attendanceRecord = {
+      userId,
+      stopId,
+      status,
+      timestamp: new Date()
+    };
+
+    if (existingIndex >= 0) {
+      // Update existing record
+      assignment.attendance[existingIndex] = attendanceRecord;
+    } else {
+      // Add new record
+      assignment.attendance.push(attendanceRecord);
+    }
+
+    await assignment.save();
+
+    res.json({
+      message: "Attendance marked successfully",
+      attendance: attendanceRecord
+    });
+  } catch (error) {
+    console.error("Error marking attendance:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

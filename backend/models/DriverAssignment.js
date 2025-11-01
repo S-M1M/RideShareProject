@@ -51,6 +51,28 @@ const driverAssignmentSchema = new mongoose.Schema({
       completedAt: Date,
     },
   ],
+  attendance: [
+    {
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+      },
+      stopId: {
+        type: String, // stop ID from route
+        required: true,
+      },
+      status: {
+        type: String,
+        enum: ["present", "absent"],
+        required: true,
+      },
+      timestamp: {
+        type: Date,
+        default: Date.now,
+      },
+    },
+  ],
   createdAt: {
     type: Date,
     default: Date.now,

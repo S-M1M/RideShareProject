@@ -11,6 +11,7 @@ import {
   Menu,
   X,
   Truck,
+  Calendar,
 } from "lucide-react";
 
 const Layout = ({ children, title }) => {
@@ -43,6 +44,7 @@ const Layout = ({ children, title }) => {
         { to: "/admin/drivers", label: "Drivers", icon: Car },
         { to: "/admin/vehicles", label: "Vehicles", icon: Truck },
         { to: "/admin/routes", label: "Routes", icon: Map },
+        { to: "/admin/rides", label: "Rides", icon: Calendar },
         { to: "/admin/finance", label: "Finance", icon: CreditCard },
       ];
     }

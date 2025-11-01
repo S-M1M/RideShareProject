@@ -1,102 +1,165 @@
 import React, { useState, useEffect } from "react";
+import { Calendar, MapPin, Clock, Bus, AlertCircle, CheckCircle, XCircle, DollarSign } from "lucide-react";
 import Layout from "../../components/Layout";
-import { Calendar, MapPin, DollarSign, Clock, Bus } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import api from "../../utils/api";
-import { getCurrentSubscription } from "../../utils/subscriptionStorage";
 
 const MyRides = () => {
   const { user, reloadUser } = useAuth();
   const [rides, setRides] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all");
-  const [currentSubscription, setCurrentSubscription] = useState(null);
+  const [activeTab, setActiveTab] = useState("all"); // all, scheduled, in-progress, completed, cancelled
+  const [cancellingRide, setCancellingRide] = useState(null);
 
   useEffect(() => {
-    if (user && user.rides) {
-      setRides(user.rides);
+    fetchRides();
+  }, [activeTab]);
+
+  const fetchRides = async () => {
+    setLoading(true);
+    try {
+      const response = await api.get("/rides/user/my-rides", {
+        params: { status: activeTab },
+      });
+      setRides(response.data);
+    } catch (error) {
+      console.error("Error fetching rides:", error);
+    } finally {
       setLoading(false);
     }
+  };
 
-    // Load current subscription from localStorage
-    const savedSubscription = getCurrentSubscription();
-    setCurrentSubscription(savedSubscription);
-  }, [user]);
+  const canCancelRide = (ride) => {
+    if (ride.isCancelled || ride.effectiveStatus !== "scheduled") {
+      return { canCancel: false, reason: "Ride cannot be cancelled" };
+    }
 
-  const cancelRide = async (rideId) => {
-    if (
-      !confirm(
-        "Are you sure you want to cancel this ride? You will receive a 50% refund."
-      )
-    ) {
+    // Check 12-hour deadline
+    const rideDateTime = new Date(ride.rideDate);
+    const [time, period] = ride.scheduledStartTime.split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+    
+    if (period === 'PM' && hours !== 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+    
+    rideDateTime.setHours(hours, minutes, 0, 0);
+    
+    const now = new Date();
+    const hoursUntilRide = (rideDateTime - now) / (1000 * 60 * 60);
+    
+    if (hoursUntilRide < 12) {
+      return { 
+        canCancel: false, 
+        reason: `Cannot cancel within 12 hours (${hoursUntilRide.toFixed(1)}h remaining)` 
+      };
+    }
+
+    return { canCancel: true, hoursUntilRide };
+  };
+
+  const handleCancelRide = async (ride) => {
+    // Double-check cancellation status
+    if (ride.isCancelled) {
+      alert("This ride has already been cancelled.");
       return;
     }
 
+    const check = canCancelRide(ride);
+    if (!check.canCancel) {
+      alert(check.reason);
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Cancel ride on ${new Date(ride.rideDate).toLocaleDateString()}?\n\n` +
+      `You will receive 50% refund of single day cost.`
+    );
+
+    if (!confirmed) return;
+
+    // Prevent double-clicking
+    if (cancellingRide === ride._id) {
+      return;
+    }
+
+    setCancellingRide(ride._id);
     try {
-      await api.put(`/rides/${rideId}/cancel`);
-      await reloadUser();
-      alert("Ride cancelled successfully. Refund will be processed.");
-    } catch (error) {
+      const response = await api.post("/subscriptions/cancel-ride", {
+        subscription_id: ride.userSubscription?.subscription_id,
+        ride_id: ride._id,
+      });
+
       alert(
-        "Error cancelling ride: " +
-          (error.response?.data?.error || error.message)
+        `Ride cancelled successfully!\n` +
+        `Refund: ${response.data.refundAmount} stars\n` +
+        `New balance: ${response.data.starsBalance} stars`
       );
+
+      // Reload user and rides
+      await reloadUser();
+      await fetchRides();
+    } catch (error) {
+      console.error("Error cancelling ride:", error);
+      const errorMsg = error.response?.data?.error || "Failed to cancel ride";
+      alert(errorMsg);
+      
+      // If already cancelled, refresh the list
+      if (errorMsg.includes("already cancelled")) {
+        await fetchRides();
+      }
+    } finally {
+      setCancellingRide(null);
     }
   };
 
-  const filteredRides = rides.filter((ride) => {
-    if (filter === "all") return true;
-    return ride.status === filter;
-  });
+  const getStatusBadge = (ride) => {
+    const status = ride.effectiveStatus;
+    const colors = {
+      scheduled: "bg-blue-100 text-blue-800",
+      "in-progress": "bg-yellow-100 text-yellow-800",
+      completed: "bg-green-100 text-green-800",
+      cancelled: "bg-red-100 text-red-800",
+    };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "scheduled":
-        return "bg-blue-100 text-blue-800";
-      case "in_progress":
-        return "bg-yellow-100 text-yellow-800";
-      case "completed":
-        return "bg-green-100 text-green-800";
-      case "cancelled":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
+    return (
+      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${colors[status]}`}>
+        {status.toUpperCase().replace('-', ' ')}
+      </span>
+    );
   };
 
-  // if (loading) {
-  //   return (
-  //     <Layout title="My Rides">
-  //       <div className="flex items-center justify-center h-64">
-  //         <div className="text-lg">Loading...</div>
-  //       </div>
-  //     </Layout>
-  //   );
-  // }
+  const tabs = [
+    { id: "all", label: "All" },
+    { id: "scheduled", label: "Scheduled" },
+    { id: "in-progress", label: "In Progress" },
+    { id: "completed", label: "Completed" },
+    { id: "cancelled", label: "Cancelled" },
+  ];
 
   return (
     <Layout title="My Rides">
-      <div className="space-y-6">
-        {/* Filter Tabs */}
-        <div className="bg-white rounded-lg shadow">
+      <div className="max-w-6xl mx-auto p-6">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">My Rides</h1>
+          <p className="text-gray-600">View and manage your ride bookings</p>
+        </div>
+
+        {/* Tabs */}
+        <div className="bg-white rounded-lg shadow-md mb-6">
           <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8 px-6">
-              {[
-                { key: "all", label: "All Rides" },
-                { key: "scheduled", label: "Scheduled" },
-                { key: "completed", label: "Completed" },
-                { key: "cancelled", label: "Cancelled" },
-              ].map(({ key, label }) => (
+            <nav className="flex -mb-px">
+              {tabs.map((tab) => (
                 <button
-                  key={key}
-                  onClick={() => setFilter(key)}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                    filter === key
-                      ? "border-blue-500 text-blue-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-6 py-3 text-sm font-medium transition-colors ${
+                    activeTab === tab.id
+                      ? 'border-b-2 border-blue-500 text-blue-600'
+                      : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
-                  {label}
+                  {tab.label}
                 </button>
               ))}
             </nav>
@@ -104,84 +167,156 @@ const MyRides = () => {
         </div>
 
         {/* Rides List */}
-        <div className="space-y-4">
-          {filteredRides.length === 0 ? (
-            <div className="bg-white rounded-lg shadow p-8 text-center">
-              <p className="text-gray-500">
-                No rides found for the selected filter.
-              </p>
-            </div>
-          ) : (
-            filteredRides.map((ride) => (
-              <div key={ride._id} className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <Calendar className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-600">
-                        {new Date(ride.date).toLocaleDateString("en-US", {
-                          weekday: "long",
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })}
-                      </span>
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="text-gray-500">Loading rides...</div>
+          </div>
+        ) : rides.length === 0 ? (
+          <div className="bg-white rounded-lg shadow-md p-12 text-center">
+            <Bus className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">No rides found</h3>
+            <p className="text-gray-500 mb-6">
+              {activeTab === "all"
+                ? "You don't have any rides yet. Purchase a subscription to get started!"
+                : `No ${activeTab.replace('-', ' ')} rides at the moment.`}
+            </p>
+            <a
+              href="/subscription"
+              className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Purchase Subscription
+            </a>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {rides.map((ride) => {
+              const cancelCheck = canCancelRide(ride);
+              
+              return (
+                <div
+                  key={ride._id}
+                  className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        {ride.presetRoute_id?.name}
+                      </h3>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {ride.presetRoute_id?.description}
+                      </p>
                     </div>
-
-                    <div className="flex items-center space-x-2 mb-2">
-                      <MapPin className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm">
-                        {ride.pickup.replace(", Bangladesh", "")}→{" "}
-                        {ride.destination.replace(", Bangladesh", "")}
-                      </span>
-                    </div>
-
-                    {ride.pickup_time && (
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Clock className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm text-gray-600">
-                          Pickup: {ride.pickup_time}
-                        </span>
-                      </div>
-                    )}
-
-                    {ride.refund_amount > 0 && (
-                      <div className="flex items-center space-x-2 mb-2">
-                        <DollarSign className="h-4 w-4 text-green-600" />
-                        <span className="text-sm text-green-600">
-                          Refund: ৳{ride.refund_amount.toFixed(2)}
-                        </span>
-                      </div>
-                    )}
+                    {getStatusBadge(ride)}
                   </div>
 
-                  <div className="flex items-center space-x-3">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                        ride.status
-                      )}`}
-                    >
-                      {ride.status.replace("_", " ")}
-                    </span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    {/* Date & Time */}
+                    <div className="flex items-start gap-3">
+                      <Calendar className="w-5 h-5 text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">Date & Time</p>
+                        <p className="text-sm text-gray-600">
+                          {new Date(ride.rideDate).toLocaleDateString()} at {ride.scheduledStartTime}
+                        </p>
+                      </div>
+                    </div>
 
-                    {ride.status === "scheduled" &&
-                      new Date(ride.date) > new Date() && (
-                        <button
-                          onClick={() => cancelRide(ride._id)}
-                          className="px-3 py-1 bg-red-600 text-white text-xs rounded-md hover:bg-red-700"
-                        >
-                          Cancel
-                        </button>
-                      )}
+                    {/* Driver */}
+                    <div className="flex items-start gap-3">
+                      <Bus className="w-5 h-5 text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">Driver</p>
+                        <p className="text-sm text-gray-600">{ride.driver_id?.name || 'N/A'}</p>
+                      </div>
+                    </div>
+
+                    {/* Pickup */}
+                    <div className="flex items-start gap-3">
+                      <MapPin className="w-5 h-5 text-green-500 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">Pickup</p>
+                        <p className="text-sm text-gray-600">
+                          {ride.userSubscription?.pickup_stop_name || 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Drop */}
+                    <div className="flex items-start gap-3">
+                      <MapPin className="w-5 h-5 text-red-500 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">Drop</p>
+                        <p className="text-sm text-gray-600">
+                          {ride.userSubscription?.drop_stop_name || 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Attendance Status */}
+                  {ride.attendanceStatus && (
+                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center gap-2 text-sm">
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                        <span className="font-medium text-green-800">
+                          Attendance: {ride.attendanceStatus.toUpperCase()}
+                        </span>
+                        {ride.attendanceTimestamp && (
+                          <span className="text-green-600">
+                            at {new Date(ride.attendanceTimestamp).toLocaleTimeString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Cancellation Info */}
+                  {ride.isCancelled && ride.cancellationInfo && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <XCircle className="w-4 h-4 text-red-600" />
+                          <span className="font-medium text-red-800">Cancelled</span>
+                          <span className="text-red-600">
+                            on {new Date(ride.cancellationInfo.cancelled_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 text-red-700 font-semibold">
+                          <DollarSign className="w-4 h-4" />
+                          Refund: {ride.cancellationInfo.refund_amount} stars
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex gap-3">
+                    {cancelCheck.canCancel && (
+                      <button
+                        onClick={() => handleCancelRide(ride)}
+                        disabled={cancellingRide === ride._id}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        {cancellingRide === ride._id ? "Cancelling..." : "Cancel Ride"}
+                      </button>
+                    )}
+                    {!cancelCheck.canCancel && ride.effectiveStatus === "scheduled" && (
+                      <div className="text-sm text-gray-500 italic flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4" />
+                        {cancelCheck.reason}
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
-            ))
-          )}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </Layout>
   );
 };
 
 export default MyRides;
+

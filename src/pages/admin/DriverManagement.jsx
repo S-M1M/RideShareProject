@@ -468,13 +468,14 @@ const EditDriverModal = ({ driver, onClose, onSuccess }) => {
 const AssignRouteModal = ({ driver, vehicles, onClose, onSuccess }) => {
   const [presetRoutes, setPresetRoutes] = useState([]);
   const today = new Date().toISOString().split("T")[0];
+  const tenDaysLater = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
   const [formData, setFormData] = useState({
     presetRoute_id: "",
     vehicle_id: driver.assigned_vehicle_id?._id || "",
     scheduledStartTime: "08:00",
     scheduledDate: today,
     startDate: today,
-    endDate: today,
+    endDate: tenDaysLater,
   });
   const [loading, setLoading] = useState(false);
   const [loadingRoutes, setLoadingRoutes] = useState(true);
@@ -528,13 +529,12 @@ const AssignRouteModal = ({ driver, vehicles, onClose, onSuccess }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     
-    // When scheduledDate changes, update startDate and endDate to match
+    // When scheduledDate changes, update startDate if startDate is empty or before scheduledDate
     if (name === "scheduledDate") {
       const newFormData = {
         ...formData,
         scheduledDate: value,
-        startDate: value,
-        endDate: value,
+        startDate: value, // Start date should match scheduled date
       };
       console.log("Updated form data (scheduledDate changed):", newFormData);
       setFormData(newFormData);
@@ -637,7 +637,7 @@ const AssignRouteModal = ({ driver, vehicles, onClose, onSuccess }) => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Scheduled Date *
+                  Start Date *
                 </label>
                 <input
                   type="date"
@@ -648,8 +648,27 @@ const AssignRouteModal = ({ driver, vehicles, onClose, onSuccess }) => {
                   min={new Date().toISOString().split("T")[0]}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
+                <p className="text-xs text-gray-500 mt-1">First day of route assignment</p>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  End Date *
+                </label>
+                <input
+                  type="date"
+                  name="endDate"
+                  value={formData.endDate}
+                  onChange={handleChange}
+                  required
+                  min={formData.scheduledDate}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Last day of route assignment (e.g., 10 days)</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Start Time *

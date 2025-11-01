@@ -2,62 +2,48 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import Layout from "../../components/Layout";
 import { useAuth } from "../../contexts/AuthContext";
-import { Car, Calendar, DollarSign, MapPin, Bus, Clock } from "lucide-react";
-import { getCurrentSubscription } from "../../utils/subscriptionStorage";
+import { Car, Calendar, DollarSign, MapPin, Bus, Clock, Package } from "lucide-react";
+import api from "../../utils/api";
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const [stats, setStats] = useState({
-    activeSubscriptions: 0,
-    totalRides: 0,
-    totalRefunds: 0,
-  });
-  const [todayRides, setTodayRides] = useState([]);
-  const [currentSubscription, setCurrentSubscription] = useState(null);
+  const [activeSubscriptions, setActiveSubscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load local data
-    const loadLocalData = () => {
-      // Get current subscription from localStorage
-      const savedSubscription = getCurrentSubscription();
-      setCurrentSubscription(savedSubscription);
+    fetchActiveSubscriptions();
+  }, []);
 
-      // Get user's active subscription
-      const hasActiveSubscription =
-        user?.subscription && new Date(user.subscription.end_date) > new Date();
-
-      // Get user's rides
-      const userRides = user?.rides || [];
-
-      // Calculate total refunds (support both camelCase and snake_case from backend)
-      const totalRefunds = userRides.reduce((total, ride) => {
-        return total + (ride.refundAmount || ride.refund_amount || 0);
-      }, 0);
-
-      // Set stats
-      setStats({
-        activeSubscriptions: hasActiveSubscription || savedSubscription ? 1 : 0,
-        totalRides: userRides.length,
-        totalRefunds: totalRefunds,
-      });
-
-      // Get today's rides
-      const today = new Date().toISOString().split("T")[0];
-      const todaysRides = userRides.filter((ride) =>
-        new Date(ride.date).toISOString().startsWith(today)
-      );
-
-      setTodayRides(todaysRides);
-      setLoading(false);
-    };
-
-    if (user) {
-      loadLocalData();
-    } else {
+  const fetchActiveSubscriptions = async () => {
+    setLoading(true);
+    try {
+      const response = await api.get("/subscriptions/active-with-rides");
+      setActiveSubscriptions(response.data);
+    } catch (error) {
+      console.error("Error fetching subscriptions:", error);
+    } finally {
       setLoading(false);
     }
-  }, [user]);
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  const getPlanTypeBadge = (planType) => {
+    const colors = {
+      daily: "bg-blue-100 text-blue-800",
+      weekly: "bg-green-100 text-green-800",
+      monthly: "bg-purple-100 text-purple-800",
+    };
+    return colors[planType?.toLowerCase()] || "bg-gray-100 text-gray-800";
+  };
 
   if (loading) {
     return (
@@ -74,172 +60,54 @@ const Dashboard = () => {
       <div className="space-y-6">
         {/* Welcome Section */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-2">
-            Welcome back, {user?.name || "User"}!
+          <h2 className="text-2xl font-bold mb-2">
+            Welcome back, {user?.first_name || user?.name || "User"}!
           </h2>
           <p className="text-gray-600">
-            Here's your ride sharing overview for today.
+            Manage your active subscriptions and rides
           </p>
         </div>
 
-        {/* Active Subscription Details */}
-        {currentSubscription && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Recent Subscription</h3>
-              <Bus className="w-6 h-6 text-blue-600" />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Route:</span>
-                  <span className="font-medium">
-                    {currentSubscription.routeName ||
-                      currentSubscription.route?.name}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Plan Type:</span>
-                  <span className="font-medium capitalize">
-                    {currentSubscription.plan_type ||
-                      currentSubscription.planType}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Price:</span>
-                  <span className="font-medium">
-                    {currentSubscription.starsCost || currentSubscription.price}{" "}
-                    stars
-                  </span>
-                </div>
-              </div>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Pickup:</span>
-                  <span className="font-medium text-green-700">
-                    {currentSubscription.pickupStopName ||
-                      currentSubscription.pickup_location?.name}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Drop:</span>
-                  <span className="font-medium text-red-700">
-                    {currentSubscription.dropStopName ||
-                      currentSubscription.drop_location?.name}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Time Slot:</span>
-                  <span className="font-medium flex items-center">
-                    <Clock className="w-4 h-4 mr-1" />
-                    {currentSubscription.timeSlot ||
-                      currentSubscription.time_slot}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-800">
-                Subscribed on:{" "}
-                {new Date(
-                  currentSubscription.createdAt ||
-                    currentSubscription.created_at
-                ).toLocaleDateString()}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Active Subscription Details from API */}
-        {user?.subscription &&
-          new Date(user.subscription.end_date) > new Date() && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold mb-4">
-                Active Subscription
-              </h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Plan Type:</span>
-                  <span className="font-medium capitalize">
-                    {user.subscription.plan_type}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Price:</span>
-                  <span className="font-medium">
-                    {user.subscription.price} Taka
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Valid Until:</span>
-                  <span className="font-medium">
-                    {new Date(user.subscription.end_date).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="mt-4 pt-4 border-t">
-                  <h4 className="font-medium mb-2">Route Details:</h4>
-                  <div className="space-y-2">
-                    <div className="flex items-center text-gray-600">
-                      <MapPin className="h-4 w-4 mr-2" />
-                      <span>
-                        From:{" "}
-                        {user.subscription.pickup_location.address.replace(
-                          ", Bangladesh",
-                          ""
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex items-center text-gray-600">
-                      <MapPin className="h-4 w-4 mr-2" />
-                      <span>
-                        To:{" "}
-                        {user.subscription.drop_location.address.replace(
-                          ", Bangladesh",
-                          ""
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Active Subscriptions */}
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <Calendar className="h-8 w-8 text-blue-600" />
+                <Bus className="h-8 w-8 text-green-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">
-                  Subscription Status
+                  Active Subscriptions
                 </p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {user?.subscription &&
-                  new Date(user.subscription.end_date) > new Date()
-                    ? "Active"
-                    : "Inactive"}
+                  {activeSubscriptions.length}
                 </p>
               </div>
             </div>
           </div>
 
+          {/* Total Upcoming Rides */}
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <Car className="h-8 w-8 text-green-600" />
+                <Car className="h-8 w-8 text-blue-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Rides</p>
+                <p className="text-sm font-medium text-gray-500">
+                  Upcoming Rides
+                </p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {stats.totalRides || 0}
+                  {activeSubscriptions.reduce(
+                    (total, sub) => total + sub.upcomingRidesCount,
+                    0
+                  )}
                 </p>
               </div>
             </div>
           </div>
 
+          {/* Stars Balance */}
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -250,74 +118,127 @@ const Dashboard = () => {
                   Stars Balance
                 </p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {user?.stars ?? stats.totalRefunds ?? 0}
+                  {user?.stars || 0}
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Today's Rides */}
+        {/* Active Subscriptions List */}
         <div className="bg-white rounded-lg shadow">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Today's Rides</h3>
+            <h3 className="text-lg font-medium text-gray-900">
+              Active Subscriptions
+            </h3>
           </div>
           <div className="p-6">
-            {todayRides.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">
-                No rides scheduled for today
-              </p>
+            {activeSubscriptions.length === 0 ? (
+              <div className="text-center py-8">
+                <Bus className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 mb-2">No active subscriptions</p>
+                <p className="text-sm text-gray-400 mb-4">
+                  Purchase a subscription to start riding
+                </p>
+                <Link
+                  to="/subscription"
+                  className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Buy Subscription
+                </Link>
+              </div>
             ) : (
-              <ul className="space-y-3">
-                {todayRides.map((ride) => {
-                  const rideId =
-                    ride._id || ride.id || `${ride.date}-${ride.pickup_time}`;
-                  const time =
-                    ride.pickup_time ||
-                    ride.time ||
-                    new Date(ride.date).toLocaleTimeString();
-                  const routeName =
-                    ride.routeName ||
-                    ride.route?.name ||
-                    ride.subscription?.route?.name ||
-                    (ride.pickup_location?.address &&
-                    ride.drop_location?.address
-                      ? `${ride.pickup_location.address.replace(
-                          ", Bangladesh",
-                          ""
-                        )} → ${ride.drop_location.address.replace(
-                          ", Bangladesh",
-                          ""
-                        )}`
-                      : "Scheduled Ride");
-                  const status = (ride.status || "scheduled").replace(
-                    /_/g,
-                    " "
-                  );
-
-                  return (
-                    <li
-                      key={rideId}
-                      className="border p-3 rounded flex items-center justify-between"
-                    >
-                      <div>
-                        <p className="font-medium">{routeName}</p>
-                        <p className="text-sm text-gray-500">{time}</p>
+              <div className="space-y-4">
+                {activeSubscriptions.map((subscription) => (
+                  <div
+                    key={subscription._id}
+                    className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h4 className="text-lg font-semibold text-gray-900">
+                            {subscription.preset_route_id?.name || "Unknown Route"}
+                          </h4>
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-medium ${getPlanTypeBadge(
+                              subscription.plan_type
+                            )}`}
+                          >
+                            {subscription.plan_type?.toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Clock className="w-4 h-4" />
+                          <span>{subscription.scheduledTime || "Not specified"}</span>
+                        </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm text-gray-600">
-                          {status[0].toUpperCase() + status.slice(1)}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {ride.driver_name ||
-                            ride.driver?.name ||
-                            "Driver TBD"}
-                        </p>
+                        <div className="text-sm text-gray-500 mb-1">
+                          Upcoming Rides
+                        </div>
+                        <div className="text-2xl font-bold text-blue-600">
+                          {subscription.upcomingRidesCount}
+                        </div>
                       </div>
-                    </li>
-                  );
-                })}
-              </ul>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
+                      {/* Pickup Location */}
+                      <div className="flex items-start gap-2">
+                        <MapPin className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">
+                            Pickup
+                          </div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {subscription.pickup_location?.name ||
+                              "Not specified"}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Drop Location */}
+                      <div className="flex items-start gap-2">
+                        <MapPin className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">Drop</div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {subscription.drop_location?.name ||
+                              "Not specified"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Next Ride Info */}
+                    {subscription.nextRideDate && (
+                      <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-sm text-blue-800">
+                            <Calendar className="w-4 h-4" />
+                            <span className="font-medium">Next Ride:</span>
+                          </div>
+                          <span className="text-sm text-blue-900 font-medium">
+                            {formatDate(subscription.nextRideDate)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Subscription Details */}
+                    <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+                      <div className="flex items-center gap-2">
+                        <Package className="w-4 h-4" />
+                        <span>
+                          Expires: {formatDate(subscription.end_date)}
+                        </span>
+                      </div>
+                      <span>{subscription.price} stars</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>

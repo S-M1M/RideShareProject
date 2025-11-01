@@ -1,30 +1,30 @@
 import React, { useState, useEffect } from "react";
 import Layout from "../../components/Layout";
 import { useAuth } from "../../contexts/AuthContext";
-import { Plus, Users, MapPin, Phone, Mail, Clock, Calendar, Navigation } from "lucide-react";
+import { Plus, Users, MapPin, Phone, Mail, Clock, Calendar, Navigation, Play } from "lucide-react";
 import { Link } from "react-router-dom";
 import api from "../../utils/api";
 
 const DriverDashboard = () => {
   const { user } = useAuth();
-  const [routes, setRoutes] = useState([]);
+  const [rides, setRides] = useState([]);
   const [passengers, setPassengers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [passengersLoading, setPassengersLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [activeTab, setActiveTab] = useState('assignments'); // 'assignments' or 'passengers'
+  const [activeTab, setActiveTab] = useState('rides'); // 'rides' or 'passengers'
 
   useEffect(() => {
-    fetchAssignments();
+    fetchRides();
     fetchPassengers();
   }, [selectedDate]);
 
-  const fetchAssignments = async () => {
+  const fetchRides = async () => {
     try {
-      const response = await api.get(`/drivers/assignments?date=${selectedDate}`);
-      setRoutes(response.data);
+      const response = await api.get(`/rides/driver/my-rides?date=${selectedDate}`);
+      setRides(response.data);
     } catch (error) {
-      console.error("Error fetching assignments:", error);
+      console.error("Error fetching rides:", error);
     } finally {
       setLoading(false);
     }
@@ -43,13 +43,14 @@ const DriverDashboard = () => {
     }
   };
 
-  const updateRouteStatus = async (assignmentId, status) => {
+  const startRide = async (rideId) => {
     try {
-      await api.put(`/drivers/assignments/${assignmentId}/status`, { status });
-      fetchAssignments();
+      await api.put(`/rides/${rideId}/start`);
+      alert("Ride started! You can now access the map.");
+      fetchRides();
     } catch (error) {
       alert(
-        "Error updating assignment status: " +
+        "Error starting ride: " +
           (error.response?.data?.error || error.message)
       );
     }
@@ -112,15 +113,15 @@ const DriverDashboard = () => {
           <div className="border-b border-gray-200">
             <nav className="flex -mb-px">
               <button
-                onClick={() => setActiveTab('assignments')}
+                onClick={() => setActiveTab('rides')}
                 className={`px-6 py-3 text-sm font-medium ${
-                  activeTab === 'assignments'
+                  activeTab === 'rides'
                     ? 'border-b-2 border-blue-500 text-blue-600'
                     : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
                 <Calendar className="w-4 h-4 inline mr-2" />
-                My Assignments
+                My Assigned Rides
               </button>
               <button
                 onClick={() => setActiveTab('passengers')}
@@ -137,98 +138,82 @@ const DriverDashboard = () => {
           </div>
 
           <div className="p-6">
-            {/* Assignments Tab */}
-            {activeTab === 'assignments' && (
+            {/* Rides Tab */}
+            {activeTab === 'rides' && (
               <div className="space-y-4">
-                {routes.length === 0 ? (
+                {rides.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">
-                    No assignments for {new Date(selectedDate).toLocaleDateString()}
+                    No rides assigned for {new Date(selectedDate).toLocaleDateString()}
                   </p>
                 ) : (
-                  routes.map((assignment) => (
+                  rides.map((ride) => (
                     <div
-                      key={assignment._id}
+                      key={ride._id}
                       className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
                     >
                       <div className="flex justify-between items-start mb-3">
                         <div>
                           <h4 className="font-semibold text-lg">
-                            {assignment.presetRoute_id?.name || "Route"}
+                            {ride.presetRoute_id?.name || "Route"}
                           </h4>
                           <p className="text-sm text-gray-600">
-                            {assignment.presetRoute_id?.description}
+                            {ride.presetRoute_id?.description}
                           </p>
                         </div>
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            assignment.status === "completed"
+                            ride.status === "completed"
                               ? "bg-green-100 text-green-800"
-                              : assignment.status === "in-progress"
+                              : ride.status === "in-progress"
                               ? "bg-yellow-100 text-yellow-800"
-                              : assignment.status === "cancelled"
+                              : ride.status === "cancelled"
                               ? "bg-red-100 text-red-800"
                               : "bg-blue-100 text-blue-800"
                           }`}
                         >
-                          {assignment.status}
+                          {ride.status}
                         </span>
                       </div>
 
                       <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
                         <div className="flex items-center text-gray-600">
                           <Clock className="w-4 h-4 mr-2" />
-                          <span>{assignment.scheduledStartTime}</span>
+                          <span>{ride.scheduledStartTime}</span>
                         </div>
                         <div className="flex items-center text-gray-600">
                           <MapPin className="w-4 h-4 mr-2" />
                           <span>
-                            {assignment.presetRoute_id?.stops?.length || 0} stops
+                            {ride.presetRoute_id?.stops?.length || 0} stops
                           </span>
                         </div>
                       </div>
 
                       <div className="flex flex-wrap gap-2">
-                        <Link
-                          to={`/driver/map/${assignment._id}`}
-                          className="flex items-center space-x-1 bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 text-sm"
-                        >
-                          <Navigation className="w-4 h-4" />
-                          <span>View Map</span>
-                        </Link>
-
-                        {assignment.status === "scheduled" && (
+                        {ride.status === "scheduled" && (
                           <button
-                            onClick={() =>
-                              updateRouteStatus(assignment._id, "in-progress")
-                            }
-                            className="bg-green-600 text-white px-3 py-2 rounded-md hover:bg-green-700 text-sm"
+                            onClick={() => startRide(ride._id)}
+                            className="flex items-center space-x-1 bg-green-600 text-white px-3 py-2 rounded-md hover:bg-green-700 text-sm"
                           >
-                            Start Route
+                            <Play className="w-4 h-4" />
+                            <span>Start Ride</span>
                           </button>
                         )}
 
-                        {assignment.status === "in-progress" && (
-                          <button
-                            onClick={() =>
-                              updateRouteStatus(assignment._id, "completed")
-                            }
-                            className="bg-purple-600 text-white px-3 py-2 rounded-md hover:bg-purple-700 text-sm"
+                        {ride.status === "in-progress" && (
+                          <Link
+                            to={`/driver/map?rideId=${ride._id}`}
+                            className="flex items-center space-x-1 bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 text-sm"
                           >
-                            Complete Route
-                          </button>
+                            <Navigation className="w-4 h-4" />
+                            <span>View Map</span>
+                          </Link>
                         )}
 
-                        {assignment.status !== "cancelled" &&
-                          assignment.status !== "completed" && (
-                            <button
-                              onClick={() =>
-                                updateRouteStatus(assignment._id, "cancelled")
-                              }
-                              className="bg-red-600 text-white px-3 py-2 rounded-md hover:bg-red-700 text-sm"
-                            >
-                              Cancel
-                            </button>
-                          )}
+                        {ride.status === "completed" && (
+                          <span className="flex items-center space-x-1 text-green-600 px-3 py-2 text-sm">
+                            ✓ Ride Completed
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))

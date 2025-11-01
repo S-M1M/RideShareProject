@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { MapPin, Clock, CheckCircle, Bus } from "lucide-react";
+import { MapPin, Clock, CheckCircle, Bus, RefreshCw } from "lucide-react";
 import Layout from "../../components/Layout";
 import { useAuth } from "../../contexts/AuthContext";
-import { getUserSubscriptions } from "../../utils/subscriptionStorage";
+import api from "../../utils/api";
 
 const MapView = () => {
   const { user } = useAuth();
@@ -11,23 +11,21 @@ const MapView = () => {
   const [selectedStop, setSelectedStop] = useState(null);
   const [mapInstance, setMapInstance] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [routeProgress, setRouteProgress] = useState({});
+  const [rides, setRides] = useState([]);
 
-  // Fetch user's subscribed routes from localStorage
+  // Fetch user's rides (all upcoming and in-progress rides)
   useEffect(() => {
-    fetchUserRoutes();
+    fetchUserRides();
   }, [user]);
-
-  // Load route progress from localStorage
-  useEffect(() => {
-    const savedProgress = localStorage.getItem("routeProgress");
-    if (savedProgress) {
-      setRouteProgress(JSON.parse(savedProgress));
-    }
-  }, []);
 
   // Initialize map
   useEffect(() => {
+    // Only initialize map when not loading and we have a container
+    if (loading) return;
+    
+    const mapContainer = document.getElementById("map");
+    if (!mapContainer) return;
+
     const initMap = async () => {
       const L = (await import("leaflet")).default;
 
@@ -59,7 +57,7 @@ const MapView = () => {
         mapInstance.remove();
       }
     };
-  }, []);
+  }, [loading]);
 
   // Update map markers when route changes
   useEffect(() => {
@@ -79,7 +77,7 @@ const MapView = () => {
       const markers = [];
       selectedRoute.stops.forEach((stop, index) => {
         const isSelected = selectedStop?.id === stop.id;
-        const stopStatus = getStopStatus(selectedRoute.id, index);
+        const stopStatus = getStopStatus(selectedRoute.rideId, index);
 
         // Define colors based on status
         let backgroundColor = "#6B7280"; // Default gray
@@ -148,9 +146,9 @@ const MapView = () => {
     };
 
     updateMap();
-  }, [mapInstance, selectedRoute, selectedStop, routeProgress]);
+  }, [mapInstance, selectedRoute, selectedStop, rides]);
 
-  const fetchUserRoutes = async () => {
+  const fetchUserRides = async () => {
     try {
       setLoading(true);
       
@@ -160,110 +158,101 @@ const MapView = () => {
         return;
       }
 
-      // Get user ID (support both _id and id)
-      const userId = user._id || user.id;
+      // Fetch all user's rides (sorted by date - scheduled and in-progress only)
+      const response = await api.get(`/rides/user/my-rides?status=scheduled`);
+      console.log("User's rides:", response.data);
       
-      // Get subscriptions from localStorage
-      const subscriptions = getUserSubscriptions(userId);
-      console.log("User's subscriptions from localStorage:", subscriptions);
-      
-      // Filter active subscriptions
-      const activeSubscriptions = subscriptions.filter(sub => {
-        const endDate = new Date(sub.endDate);
-        const now = new Date();
-        return sub.status === 'active' && endDate >= now;
+      // Sort rides by date (earliest first)
+      const sortedRides = response.data.sort((a, b) => {
+        const dateA = new Date(a.rideDate);
+        const dateB = new Date(b.rideDate);
+        return dateA - dateB;
       });
-
-      console.log("Active subscriptions:", activeSubscriptions);
       
-      // Transform subscriptions to route format
-      // Group by route to avoid duplicates
-      const routesMap = new Map();
-      
-      activeSubscriptions.forEach(sub => {
-        const routeId = sub.routeId || sub.preset_route_id;
-        
-        if (!routesMap.has(routeId)) {
-          // Extract stops from subscription or create from pickup/drop
-          const stops = [];
-          
-          // Add pickup stop
-          if (sub.pickupStopName && sub.pickup_location) {
-            stops.push({
-              id: sub.pickupStopId || `pickup_${routeId}`,
-              name: sub.pickupStopName,
-              lat: sub.pickup_location.latitude,
-              lng: sub.pickup_location.longitude,
-              type: 'pickup'
-            });
-          }
-          
-          // Add drop stop
-          if (sub.dropStopName && sub.drop_location) {
-            stops.push({
-              id: sub.dropStopId || `drop_${routeId}`,
-              name: sub.dropStopName,
-              lat: sub.drop_location.latitude,
-              lng: sub.drop_location.longitude,
-              type: 'drop'
-            });
-          }
+      setRides(sortedRides);
 
-          routesMap.set(routeId, {
-            id: routeId,
-            name: sub.routeName || "My Route",
-            description: `${sub.plan_type} subscription - ${sub.timeSlot}`,
-            totalStops: stops.length,
-            estimatedTime: "N/A",
-            fare: `${sub.price} points`,
-            stops: stops,
-            subscription: sub
+      // Transform rides to route format (same as driver view)
+      const transformedRoutes = sortedRides.map(ride => {
+        const presetRoute = ride.presetRoute_id;
+        const allStops = [];
+
+        // Add start point
+        if (presetRoute.startPoint) {
+          allStops.push({
+            id: `start_${presetRoute._id}`,
+            name: presetRoute.startPoint.name,
+            lat: presetRoute.startPoint.lat,
+            lng: presetRoute.startPoint.lng,
+            order: 0,
+            type: 'start'
           });
         }
+
+        // Add all intermediate stops
+        if (presetRoute.stops && presetRoute.stops.length > 0) {
+          presetRoute.stops.forEach(stop => {
+            allStops.push({
+              id: stop._id, // Use actual MongoDB ID
+              name: stop.name,
+              lat: stop.lat,
+              lng: stop.lng,
+              order: stop.order,
+              type: 'stop'
+            });
+          });
+        }
+
+        // Add end point
+        if (presetRoute.endPoint) {
+          allStops.push({
+            id: `end_${presetRoute._id}`,
+            name: presetRoute.endPoint.name,
+            lat: presetRoute.endPoint.lat,
+            lng: presetRoute.endPoint.lng,
+            order: 999,
+            type: 'end'
+          });
+        }
+
+        // Sort by order
+        allStops.sort((a, b) => a.order - b.order);
+
+        return {
+          id: presetRoute._id,
+          rideId: ride._id,
+          name: presetRoute.name,
+          description: presetRoute.description,
+          totalStops: allStops.length,
+          fare: presetRoute.fare,
+          stops: allStops,
+          ride: ride,
+          rideDate: ride.rideDate,
+          scheduledStartTime: ride.scheduledStartTime,
+          currentStopIndex: ride.currentStopIndex || 0,
+          attendanceStatus: ride.userSubscription?.attendanceStatus,
+        };
       });
 
-      const transformedRoutes = Array.from(routesMap.values());
-      console.log("Transformed routes:", transformedRoutes);
+      console.log("Transformed rides:", transformedRoutes);
 
       setRoutes(transformedRoutes);
       if (transformedRoutes.length > 0) {
         setSelectedRoute(transformedRoutes[0]);
       }
     } catch (error) {
-      console.error("Error fetching user routes:", error);
+      console.error("Error fetching user rides:", error);
       setRoutes([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Save route progress to localStorage
-  const saveProgress = (progress) => {
-    setRouteProgress(progress);
-    localStorage.setItem("routeProgress", JSON.stringify(progress));
-  };
-
-  // Get current stop index for a route
-  const getCurrentStopIndex = (routeId) => {
-    return routeProgress[routeId]?.currentStopIndex || 0;
-  };
-
-  // Mark a stop as reached (driver only)
-  const markStopAsReached = (routeId, stopIndex) => {
-    if (user?.role !== "driver") return;
-
-    const newProgress = {
-      ...routeProgress,
-      [routeId]: {
-        currentStopIndex: stopIndex + 1,
-      },
-    };
-    saveProgress(newProgress);
-  };
-
-  // Get stop status
-  const getStopStatus = (routeId, stopIndex) => {
-    const currentIndex = getCurrentStopIndex(routeId);
+  // Get stop status based on driver's progress
+  const getStopStatus = (rideId, stopIndex) => {
+    const ride = rides.find(r => r._id === rideId);
+    if (!ride) return "upcoming";
+    
+    const currentIndex = ride.currentStopIndex || 0;
     if (stopIndex < currentIndex) return "completed";
     if (stopIndex === currentIndex) return "current";
     return "upcoming";
@@ -272,9 +261,9 @@ const MapView = () => {
   // Loading state
   if (loading) {
     return (
-      <Layout title="My Routes - Map View">
+      <Layout title="My Rides - Map View">
         <div className="flex items-center justify-center h-64">
-          <div className="text-lg">Loading your routes...</div>
+          <div className="text-lg">Loading your rides...</div>
         </div>
       </Layout>
     );
@@ -283,20 +272,20 @@ const MapView = () => {
   // No routes state
   if (routes.length === 0) {
     return (
-      <Layout title="My Routes - Map View">
+      <Layout title="My Rides - Map View">
         <div className="flex flex-col items-center justify-center h-64 text-center">
           <Bus className="w-16 h-16 text-gray-300 mb-4" />
           <h3 className="text-xl font-semibold text-gray-700 mb-2">
-            No Subscribed Routes
+            No Upcoming Rides
           </h3>
           <p className="text-gray-500 mb-4">
-            You haven't subscribed to any routes yet.
+            You don't have any scheduled rides at the moment.
           </p>
           <a
             href="/subscription"
             className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700"
           >
-            Subscribe to a Route
+            Purchase Subscription
           </a>
         </div>
       </Layout>
@@ -305,33 +294,42 @@ const MapView = () => {
 
   // Main render
   return (
-    <Layout>
+    <Layout title="My Rides - Map View">
       <div className="min-h-screen bg-gray-50">
         <div className="container mx-auto px-4 py-6">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Route Explorer
-            </h1>
-            <p className="text-gray-600">
-              Explore different bus routes and their stops in Dhaka
-            </p>
+          <div className="mb-6 flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                My Rides
+              </h1>
+              <p className="text-gray-600">
+                Track real-time progress of your upcoming rides
+              </p>
+            </div>
+            <button
+              onClick={fetchUserRides}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh Progress
+            </button>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Route Selection Sidebar */}
             <div className="lg:col-span-1 space-y-4">
               <div className="bg-white rounded-lg shadow-md p-4">
-                <h2 className="text-xl font-semibold mb-4">My Routes</h2>
+                <h2 className="text-xl font-semibold mb-4">My Rides</h2>
                 <div className="space-y-3">
                   {routes.map((route) => (
                     <button
-                      key={route.id}
+                      key={route.rideId}
                       onClick={() => {
                         setSelectedRoute(route);
                         setSelectedStop(null);
                       }}
                       className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                        selectedRoute.id === route.id
+                        selectedRoute.rideId === route.rideId
                           ? "border-blue-500 bg-blue-50"
                           : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                       }`}
@@ -339,17 +337,19 @@ const MapView = () => {
                       <div className="font-medium text-gray-900 mb-1">
                         {route.name}
                       </div>
-                      <div className="text-sm text-gray-600 mb-2">
-                        {route.description}
+                      <div className="text-xs text-gray-500 mb-2">
+                        {new Date(route.rideDate).toLocaleDateString()} • {route.scheduledStartTime}
                       </div>
+                      {route.attendanceStatus && (
+                        <div className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded mb-2">
+                          <CheckCircle size={12} />
+                          <span>Present</span>
+                        </div>
+                      )}
                       <div className="flex items-center gap-4 text-xs text-gray-500">
                         <span className="flex items-center gap-1">
                           <MapPin size={12} />
                           {route.totalStops} stops
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock size={12} />
-                          {route.estimatedTime}
                         </span>
                         <span className="font-medium text-green-600">
                           {route.fare}
