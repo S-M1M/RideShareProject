@@ -36,6 +36,25 @@ router.put("/profile", auth, async (req, res) => {
   }
 });
 
+// Delete user profile
+router.delete("/profile", auth, async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Delete all related data
+    await Subscription.deleteMany({ user_id: userId });
+    await Ride.deleteMany({ user_id: userId });
+    await StarTransaction.deleteMany({ user_id: userId });
+
+    // Delete the user
+    await User.findByIdAndDelete(userId);
+
+    res.json({ message: "Profile deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get user stats
 router.get("/stats", auth, async (req, res) => {
   try {
@@ -171,14 +190,17 @@ router.get("/my-routes", auth, async (req, res) => {
     const subscriptions = await Subscription.find({
       user_id: req.user._id,
       active: true,
-      end_date: { $gte: new Date() }
+      end_date: { $gte: new Date() },
     }).populate("preset_route_id");
 
     // Extract unique routes
     const routes = subscriptions
-      .map(sub => sub.preset_route_id)
-      .filter((route, index, self) => 
-        route && self.findIndex(r => r._id.toString() === route._id.toString()) === index
+      .map((sub) => sub.preset_route_id)
+      .filter(
+        (route, index, self) =>
+          route &&
+          self.findIndex((r) => r._id.toString() === route._id.toString()) ===
+            index
       );
 
     // For each route, find today's active driver assignment to get progress
@@ -187,30 +209,36 @@ router.get("/my-routes", auth, async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const routesWithProgress = await Promise.all(routes.map(async (route) => {
-      // Find active assignment for this route today
-      const assignment = await DriverAssignment.findOne({
-        presetRoute_id: route._id,
-        startDate: { $lte: today },
-        endDate: { $gte: today },
-        status: { $ne: "cancelled" }
-      }).populate("driver_id", "name email");
+    const routesWithProgress = await Promise.all(
+      routes.map(async (route) => {
+        // Find active assignment for this route today
+        const assignment = await DriverAssignment.findOne({
+          presetRoute_id: route._id,
+          startDate: { $lte: today },
+          endDate: { $gte: today },
+          status: { $ne: "cancelled" },
+        }).populate("driver_id", "name email");
 
-      return {
-        ...route.toObject(),
-        activeAssignment: assignment ? {
-          _id: assignment._id,
-          currentStopIndex: assignment.currentStopIndex || 0,
-          status: assignment.status,
-          scheduledStartTime: assignment.scheduledStartTime,
-          driver: assignment.driver_id ? {
-            _id: assignment.driver_id._id,
-            name: assignment.driver_id.name,
-            email: assignment.driver_id.email
-          } : null
-        } : null
-      };
-    }));
+        return {
+          ...route.toObject(),
+          activeAssignment: assignment
+            ? {
+                _id: assignment._id,
+                currentStopIndex: assignment.currentStopIndex || 0,
+                status: assignment.status,
+                scheduledStartTime: assignment.scheduledStartTime,
+                driver: assignment.driver_id
+                  ? {
+                      _id: assignment.driver_id._id,
+                      name: assignment.driver_id.name,
+                      email: assignment.driver_id.email,
+                    }
+                  : null,
+              }
+            : null,
+        };
+      })
+    );
 
     res.json(routesWithProgress);
   } catch (error) {
@@ -231,18 +259,18 @@ router.get("/today-routes", auth, async (req, res) => {
       user_id: req.user._id,
       active: true,
       start_date: { $lte: targetDate },
-      end_date: { $gte: targetDate }
+      end_date: { $gte: targetDate },
     });
 
     // Get route IDs from subscriptions
-    const routeIds = subscriptions.map(sub => sub.preset_route_id);
+    const routeIds = subscriptions.map((sub) => sub.preset_route_id);
 
     // Find driver assignments for these routes TODAY
     const assignments = await DriverAssignment.find({
       presetRoute_id: { $in: routeIds },
       startDate: { $lte: targetDate },
       endDate: { $gte: targetDate },
-      status: { $ne: "cancelled" }
+      status: { $ne: "cancelled" },
     })
       .populate("presetRoute_id")
       .populate("driver_id", "name email phone")

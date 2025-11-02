@@ -2,16 +2,26 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import Layout from "../../components/Layout";
 import { useAuth } from "../../contexts/AuthContext";
-import { Car, Calendar, DollarSign, MapPin, Bus, Clock, Package } from "lucide-react";
+import {
+  Car,
+  Calendar,
+  DollarSign,
+  MapPin,
+  Bus,
+  Clock,
+  Package,
+} from "lucide-react";
 import api from "../../utils/api";
 
 const Dashboard = () => {
   const { user } = useAuth();
   const [activeSubscriptions, setActiveSubscriptions] = useState([]);
+  const [nextRide, setNextRide] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchActiveSubscriptions();
+    fetchNextRide();
   }, []);
 
   const fetchActiveSubscriptions = async () => {
@@ -23,6 +33,28 @@ const Dashboard = () => {
       console.error("Error fetching subscriptions:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchNextRide = async () => {
+    try {
+      const response = await api.get("/rides/user/my-rides?status=scheduled");
+      const rides = response.data;
+
+      // Filter for future rides
+      const now = new Date();
+      const futureRides = rides.filter((ride) => {
+        const rideDate = new Date(ride.rideDate);
+        return rideDate >= now;
+      });
+
+      // Sort by date and get the first one
+      if (futureRides.length > 0) {
+        futureRides.sort((a, b) => new Date(a.rideDate) - new Date(b.rideDate));
+        setNextRide(futureRides[0]);
+      }
+    } catch (error) {
+      console.error("Error fetching next ride:", error);
     }
   };
 
@@ -158,7 +190,8 @@ const Dashboard = () => {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <h4 className="text-lg font-semibold text-gray-900">
-                            {subscription.preset_route_id?.name || "Unknown Route"}
+                            {subscription.preset_route_id?.name ||
+                              "Unknown Route"}
                           </h4>
                           <span
                             className={`px-3 py-1 rounded-full text-xs font-medium ${getPlanTypeBadge(
@@ -170,7 +203,9 @@ const Dashboard = () => {
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                           <Clock className="w-4 h-4" />
-                          <span>{subscription.scheduledTime || "Not specified"}</span>
+                          <span>
+                            {subscription.scheduledTime || "Not specified"}
+                          </span>
                         </div>
                       </div>
                       <div className="text-right">
@@ -212,16 +247,22 @@ const Dashboard = () => {
                     </div>
 
                     {/* Next Ride Info */}
-                    {subscription.nextRideDate && (
+                    {subscription.nextRideDate && subscription.nextRideId && (
                       <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 text-sm text-blue-800">
                             <Calendar className="w-4 h-4" />
                             <span className="font-medium">Next Ride:</span>
+                            <span className="text-sm text-blue-900 font-medium">
+                              {formatDate(subscription.nextRideDate)}
+                            </span>
                           </div>
-                          <span className="text-sm text-blue-900 font-medium">
-                            {formatDate(subscription.nextRideDate)}
-                          </span>
+                          <Link
+                            to={`/map?rideId=${subscription.nextRideId}`}
+                            className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 transition-colors"
+                          >
+                            View on Map
+                          </Link>
                         </div>
                       </div>
                     )}
@@ -266,12 +307,16 @@ const Dashboard = () => {
           </Link>
 
           <Link
-            to="/map"
+            to={nextRide ? `/map?rideId=${nextRide._id}` : "/map"}
             className="bg-green-600 text-white rounded-lg p-6 hover:bg-green-700 transition-colors"
           >
             <h3 className="text-lg font-semibold mb-2">Track Rides</h3>
             <p className="text-green-100">
-              View your vehicle location on the map
+              {nextRide
+                ? `View your next ride on ${new Date(
+                    nextRide.rideDate
+                  ).toLocaleDateString()}`
+                : "View your rides on the map"}
             </p>
           </Link>
         </div>

@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from "react";
 import Layout from "../../components/Layout";
 import { useAuth } from "../../contexts/AuthContext";
-import { User, Phone, Mail, Save } from "lucide-react";
+import { User, Phone, Mail, Save, Trash2 } from "lucide-react";
 import api from "../../utils/api";
+import { useNavigate } from "react-router-dom";
 
 const Profile = () => {
-  const { user, reloadUser } = useAuth();
+  const { user, reloadUser, logout } = useAuth();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
   });
   const [loading, setLoading] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -32,7 +35,7 @@ const Profile = () => {
     } catch (error) {
       alert(
         "Error updating profile: " +
-          (error.response?.data?.error || error.message),
+          (error.response?.data?.error || error.message)
       );
     } finally {
       setLoading(false);
@@ -46,23 +49,16 @@ const Profile = () => {
     });
   };
 
-  const cancelSubscription = async (subscriptionId) => {
-    if (
-      !confirm(
-        "Are you sure you want to cancel this subscription? Future rides will be cancelled with 50% refunds.",
-      )
-    ) {
-      return;
-    }
-
+  const handleDeleteProfile = async () => {
     try {
-      await api.put(`/subscriptions/${subscriptionId}/cancel`);
-      await reloadUser();
-      alert("Subscription cancelled successfully.");
+      await api.delete("/users/profile");
+      alert("Your profile has been permanently deleted.");
+      logout();
+      navigate("/login");
     } catch (error) {
       alert(
-        "Error cancelling subscription: " +
-          (error.response?.data?.error || error.message),
+        "Error deleting profile: " +
+          (error.response?.data?.error || error.message)
       );
     }
   };
@@ -140,74 +136,55 @@ const Profile = () => {
           </form>
         </div>
 
-        {/* Active Subscriptions */}
+        {/* Delete Profile Section */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4">Active Subscriptions</h3>
+          <h3 className="text-lg font-semibold mb-4 text-red-600">
+            Danger Zone
+          </h3>
 
-          {!user?.subscription ? (
-            <p className="text-gray-500 text-center py-4">
-              No active subscriptions found.
-            </p>
-          ) : (
-            <div className="space-y-4">
-              <div key={user.subscription.id} className="border rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <span className="font-medium capitalize">
-                        {user.subscription.plan_type} Plan
-                      </span>
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs ${
-                          user.subscription.status === "active"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {user.subscription.status === "active"
-                          ? "Active"
-                          : "Cancelled"}
-                      </span>
-                    </div>
+          <div className="border border-red-200 rounded-lg p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <h4 className="font-medium text-gray-900 mb-1">
+                  Delete Account
+                </h4>
+                <p className="text-sm text-gray-600">
+                  Permanently delete your account and all associated data. This
+                  action cannot be undone.
+                </p>
+              </div>
 
-                    <div className="text-sm text-gray-600 space-y-1">
-                      <p>
-                        Route: {user.subscription.pickup_location?.address} →{" "}
-                        {user.subscription.drop_location?.address}
-                      </p>
-                      <p>Distance: {user.subscription.distance || "10"} km</p>
-                      <p>Price: ৳{user.subscription.price}</p>
-                      <p>
-                        Period:{" "}
-                        {new Date(
-                          user.subscription.start_date,
-                        ).toLocaleDateString()}{" "}
-                        -{" "}
-                        {new Date(
-                          user.subscription.end_date,
-                        ).toLocaleDateString()}
-                      </p>
-                      <p>
-                        Days:{" "}
-                        {user.subscription.schedule?.days?.join(", ") ||
-                          "Sunday - Thursday"}
-                      </p>
-                      <p>Time: {user.subscription.schedule?.time || "08:30"}</p>
-                    </div>
-                  </div>
-
-                  {user.subscription.status === "active" && (
+              {!showDeleteConfirm ? (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="ml-4 flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 whitespace-nowrap"
+                >
+                  <Trash2 size={16} />
+                  <span>Delete Account</span>
+                </button>
+              ) : (
+                <div className="ml-4 flex flex-col space-y-2">
+                  <p className="text-sm font-medium text-red-600 mb-1">
+                    Are you sure?
+                  </p>
+                  <div className="flex space-x-2">
                     <button
-                      onClick={() => cancelSubscription(user.subscription.id)}
-                      className="ml-4 px-3 py-1 bg-red-600 text-white text-sm rounded-md hover:bg-red-700"
+                      onClick={handleDeleteProfile}
+                      className="px-3 py-1 bg-red-600 text-white text-sm rounded-md hover:bg-red-700"
+                    >
+                      Yes, Delete
+                    </button>
+                    <button
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="px-3 py-1 bg-gray-300 text-gray-700 text-sm rounded-md hover:bg-gray-400"
                     >
                       Cancel
                     </button>
-                  )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
     </Layout>
