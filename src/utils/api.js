@@ -1,18 +1,13 @@
 import axios from "axios";
 
-// Use environment variable for API URL, fallback to production URL
-// In development (localhost), Vite proxy will handle /api requests
-// In production (Netlify), it will use the full Render URL
+// Always use the Render backend URL for all environments
+// This allows the app to work directly from the web without localhost
 const getBaseURL = () => {
-  // Check if we're in development mode (localhost)
-  if (import.meta.env.DEV) {
-    // Use relative path - Vite proxy will forward to localhost:5000
-    console.log("Development mode: Using Vite proxy /api");
-    return "/api";
-  }
-  // Production - use full Render URL
-  const apiUrl = import.meta.env.VITE_API_URL || "https://rideshareproject-vyu1.onrender.com/api";
-  console.log("Production mode: Using API URL:", apiUrl);
+  // Use environment variable or fallback to Render URL
+  const apiUrl =
+    import.meta.env.VITE_API_URL ||
+    "https://rideshareproject-vyu1.onrender.com/api";
+  console.log("Using API URL:", apiUrl);
   return apiUrl;
 };
 
@@ -28,7 +23,11 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    console.log(`API Request: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`);
+    console.log(
+      `API Request: ${config.method.toUpperCase()} ${config.baseURL}${
+        config.url
+      }`
+    );
     return config;
   },
   (error) => {
@@ -46,7 +45,10 @@ api.interceptors.response.use(
   (error) => {
     if (error.response) {
       // Server responded with error status
-      console.error(`API Error Response: ${error.response.status}`, error.response.data);
+      console.error(
+        `API Error Response: ${error.response.status}`,
+        error.response.data
+      );
     } else if (error.request) {
       // Request made but no response
       console.error("API No Response:", error.message);

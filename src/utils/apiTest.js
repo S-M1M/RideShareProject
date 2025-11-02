@@ -8,7 +8,9 @@ import api from "./api.js";
 // Test 1: Health Check (Public)
 export async function testHealthCheck() {
   try {
-    const response = await fetch("http://localhost:5000/api/health");
+    const response = await fetch(
+      "https://rideshareproject-vyu1.onrender.com/api/health"
+    );
     const data = await response.json();
     console.log("✅ Health Check:", data);
     return true;

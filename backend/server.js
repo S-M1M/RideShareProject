@@ -8,23 +8,24 @@ import subscriptionRoutes from "./routes/subscriptions.js";
 import rideRoutes from "./routes/rides.js";
 import driverRoutes from "./routes/drivers.js";
 import adminRoutes from "./routes/admin.js";
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Load .env from root directory
-dotenv.config({ path: join(__dirname, '..', '.env') });
+dotenv.config({ path: join(__dirname, "..", ".env") });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Configure allowed origins
+// Configure allowed origins - only production URLs
 const allowedOrigins = [
   "https://pickmeupdhaka.netlify.app",
-  "http://localhost:5173",
-  "http://localhost:5000",
+  // Add localhost only if you need to test locally
+  // "http://localhost:5173",
+  // "http://localhost:5000",
 ];
 
 // Middleware
@@ -33,7 +34,7 @@ app.use(
     origin: function (origin, callback) {
       // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
-      
+
       if (allowedOrigins.indexOf(origin) === -1) {
         const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
         console.warn(msg);
@@ -73,10 +74,11 @@ mongoose.connection.on("error", (err) => {
 
 // Health check endpoint (before routes)
 app.get("/api/health", (req, res) => {
-  res.json({ 
+  res.json({
     status: "Server is running",
     timestamp: new Date().toISOString(),
-    mongodb: mongoose.connection.readyState === 1 ? "connected" : "disconnected"
+    mongodb:
+      mongoose.connection.readyState === 1 ? "connected" : "disconnected",
   });
 });
 
@@ -90,7 +92,7 @@ app.use("/api/admin", adminRoutes);
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({ 
+  res.status(404).json({
     error: "Not Found",
     message: `Cannot ${req.method} ${req.path}`,
     availableRoutes: [
@@ -100,8 +102,8 @@ app.use((req, res) => {
       "/api/subscriptions",
       "/api/rides",
       "/api/drivers",
-      "/api/admin"
-    ]
+      "/api/admin",
+    ],
   });
 });
 
@@ -110,12 +112,14 @@ app.use((err, req, res, next) => {
   console.error("Global error handler:", err);
   res.status(err.status || 500).json({
     error: err.message || "Internal Server Error",
-    stack: process.env.NODE_ENV === "development" ? err.stack : undefined
+    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
   });
 });
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
-  console.log(`MongoDB URI configured: ${process.env.MONGODB_URI ? "Yes" : "No"}`);
+  console.log(
+    `MongoDB URI configured: ${process.env.MONGODB_URI ? "Yes" : "No"}`
+  );
 });
