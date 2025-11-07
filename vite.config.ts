@@ -8,5 +8,15 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ["lucide-react"],
   },
-  // No proxy needed - app connects directly to Render backend
+  // Proxy configuration for local development
+  // When VITE_API_URL contains 'localhost', requests to /api are proxied to local backend
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
+  }
 });

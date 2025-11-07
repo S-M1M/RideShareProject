@@ -10,7 +10,11 @@
     "preview": "vite preview",
     "server": "node backend/server.js",
     "start": "node backend/server.js",
-    "dev:full": "concurrently \"npm run server\" \"npm run dev\" --names \"BACKEND,FRONTEND\" --prefix-colors \"bgBlue.bold,bgMagenta.bold\""
+    "dev:full": "concurrently \"npm run server\" \"npm run dev\" --names \"BACKEND,FRONTEND\" --prefix-colors \"bgBlue.bold,bgMagenta.bold\"",
+    "env:local": "powershell -ExecutionPolicy Bypass -File ./switch-env.ps1 local",
+    "env:prod": "powershell -ExecutionPolicy Bypass -File ./switch-env.ps1 production",
+    "dev:local": "npm run env:local && npm run dev:full",
+    "dev:prod": "npm run env:prod && npm run dev"
   },
   "engines": {
     "node": "20.x"

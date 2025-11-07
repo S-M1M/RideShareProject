@@ -14,19 +14,28 @@ import { dirname, join } from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load .env from root directory
+// Load .env from backend directory first, then try root
+dotenv.config({ path: join(__dirname, ".env") });
+// Also try loading from root as fallback
 dotenv.config({ path: join(__dirname, "..", ".env") });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Configure allowed origins - only production URLs
-const allowedOrigins = [
-  "https://pickmeupdhaka.netlify.app",
-  // Add localhost only if you need to test locally
-  // "http://localhost:5173",
-  // "http://localhost:5000",
-];
+// Configure allowed origins based on environment
+const isProduction = process.env.NODE_ENV === "production";
+const allowedOrigins = isProduction
+  ? [
+      "https://pickmeupdhaka.netlify.app",
+    ]
+  : [
+      "http://localhost:5173",
+      "http://localhost:5174", // In case vite uses alternate port
+      "http://localhost:5000",
+      "https://pickmeupdhaka.netlify.app", // Allow production too for testing
+    ];
+
+console.log(`🌍 CORS enabled for: ${allowedOrigins.join(", ")}`);
 
 // Middleware
 app.use(
@@ -35,12 +44,13 @@ app.use(
       // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.indexOf(origin) === -1) {
-        const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
-        console.warn(msg);
-        return callback(new Error(msg), false);
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        return callback(null, true);
       }
-      return callback(null, true);
+      
+      const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
+      console.warn(msg);
+      return callback(new Error(msg), false);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
