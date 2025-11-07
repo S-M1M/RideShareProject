@@ -25,7 +25,7 @@ const MapSelector = ({
   selectedLocation,
   pickupLocation,
 }) => {
-  const [position, setPosition] = useState([37.7749, -122.4194]); // Default to San Francisco
+  const [position, setPosition] = useState([23.8103, 90.4125]); // Default to Dhaka, Bangladesh
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -35,6 +35,7 @@ const MapSelector = ({
         },
         (error) => {
           console.log("Error getting location:", error);
+          // Keep Dhaka as fallback if geolocation fails
         },
       );
     }

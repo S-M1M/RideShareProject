@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { X } from "lucide-react";
 import api from "../utils/api";
-import MapSelector from "./MapSelector";
+import RouteMapSelector from "./RouteMapSelector";
 
 const RouteFormModal = ({ route, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
@@ -9,7 +9,7 @@ const RouteFormModal = ({ route, onClose, onSuccess }) => {
     description: route?.description || "",
     startPoint: route?.startPoint || { name: "", lat: 23.7808, lng: 90.4176 },
     endPoint: route?.endPoint || { name: "", lat: 23.7808, lng: 90.4176 },
-    stops: route?.stops || [],
+    stoppages: route?.stoppages || route?.stops || [], // Check both new and old field names
     estimatedTime: route?.estimatedTime || "",
     fare: route?.fare || "",
     active: route?.active !== undefined ? route.active : true,
@@ -25,14 +25,14 @@ const RouteFormModal = ({ route, onClose, onSuccess }) => {
     setLoading(true);
 
     try {
-      const stopsWithOrder = formData.stops.map((stop, idx) => ({
-        ...stop,
-        order: stop.order !== undefined ? stop.order : idx,
+      const stoppagesWithOrder = formData.stoppages.map((stoppage, idx) => ({
+        ...stoppage,
+        order: stoppage.order !== undefined ? stoppage.order : idx,
       })).sort((a, b) => a.order - b.order);
 
       const dataToSubmit = {
         ...formData,
-        stops: stopsWithOrder,
+        stoppages: stoppagesWithOrder,
       };
 
       if (route) {
@@ -58,18 +58,18 @@ const RouteFormModal = ({ route, onClose, onSuccess }) => {
 
   const handleAddStop = () => {
     if (!newStop.name) {
-      alert("Please enter a stop name");
+      alert("Please enter a stoppage name");
       return;
     }
 
-    const stopWithOrder = {
+    const stoppageWithOrder = {
       ...newStop,
-      order: formData.stops.length,
+      order: formData.stoppages.length,
     };
 
     setFormData({
       ...formData,
-      stops: [...formData.stops, stopWithOrder],
+      stoppages: [...formData.stoppages, stoppageWithOrder],
     });
     setNewStop({ name: "", lat: 23.7808, lng: 90.4176, order: 0 });
     setShowStopMap(false);
@@ -78,8 +78,8 @@ const RouteFormModal = ({ route, onClose, onSuccess }) => {
   const handleRemoveStop = (index) => {
     setFormData({
       ...formData,
-      stops: formData.stops.filter((_, i) => i !== index).map((stop, idx) => ({
-        ...stop,
+      stoppages: formData.stoppages.filter((_, i) => i !== index).map((stoppage, idx) => ({
+        ...stoppage,
         order: idx,
       })),
     });
@@ -155,7 +155,7 @@ const RouteFormModal = ({ route, onClose, onSuccess }) => {
             </button>
             {showStartMap && (
               <div className="mt-2">
-                <MapSelector
+                <RouteMapSelector
                   position={formData.startPoint}
                   onPositionChange={(pos) =>
                     setFormData({ ...formData, startPoint: pos })
@@ -194,7 +194,7 @@ const RouteFormModal = ({ route, onClose, onSuccess }) => {
             </button>
             {showEndMap && (
               <div className="mt-2">
-                <MapSelector
+                <RouteMapSelector
                   position={formData.endPoint}
                   onPositionChange={(pos) =>
                     setFormData({ ...formData, endPoint: pos })
@@ -209,22 +209,22 @@ const RouteFormModal = ({ route, onClose, onSuccess }) => {
 
           <div className="border rounded-lg p-4 bg-gray-50">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Intermediate Stops
+              Stoppages
             </label>
             
-            {formData.stops.length > 0 && (
+            {formData.stoppages.length > 0 && (
               <div className="space-y-2 mb-3">
-                {formData.stops
+                {formData.stoppages
                   .sort((a, b) => a.order - b.order)
-                  .map((stop, index) => (
+                  .map((stoppage, index) => (
                     <div
                       key={index}
                       className="flex items-center justify-between bg-white p-2 rounded border"
                     >
                       <div className="flex-1">
-                        <p className="font-medium text-sm">{stop.name}</p>
+                        <p className="font-medium text-sm">{stoppage.name}</p>
                         <p className="text-xs text-gray-500">
-                          Stop {index + 1} - Lat: {stop.lat.toFixed(4)}, Lng: {stop.lng.toFixed(4)}
+                          Stoppage {index + 1} - Lat: {stoppage.lat.toFixed(4)}, Lng: {stoppage.lng.toFixed(4)}
                         </p>
                       </div>
                       <button
@@ -244,7 +244,7 @@ const RouteFormModal = ({ route, onClose, onSuccess }) => {
                 type="text"
                 value={newStop.name}
                 onChange={(e) => setNewStop({ ...newStop, name: e.target.value })}
-                placeholder="Enter stop name"
+                placeholder="Enter stoppage name"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md mb-2"
               />
               <button
@@ -256,7 +256,7 @@ const RouteFormModal = ({ route, onClose, onSuccess }) => {
               </button>
               {showStopMap && (
                 <div className="mb-2">
-                  <MapSelector
+                  <RouteMapSelector
                     position={newStop}
                     onPositionChange={(pos) =>
                       setNewStop({ ...newStop, lat: pos.lat, lng: pos.lng })
@@ -269,7 +269,7 @@ const RouteFormModal = ({ route, onClose, onSuccess }) => {
                 onClick={handleAddStop}
                 className="w-full bg-gray-200 text-gray-700 py-2 rounded-md hover:bg-gray-300 text-sm"
               >
-                Add Stop
+                Add Stoppage
               </button>
             </div>
           </div>

@@ -138,10 +138,6 @@ const Profile = () => {
 
         {/* Delete Profile Section */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4 text-red-600">
-            Danger Zone
-          </h3>
-
           <div className="border border-red-200 rounded-lg p-4">
             <div className="flex items-start justify-between">
               <div>

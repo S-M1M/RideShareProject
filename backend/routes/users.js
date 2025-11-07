@@ -283,4 +283,14 @@ router.get("/today-routes", auth, async (req, res) => {
   }
 });
 
+// Get all preset routes (public for authenticated users)
+router.get("/preset-routes", auth, async (req, res) => {
+  try {
+    const presetRoutes = await PresetRoute.find({ active: true }).sort({ createdAt: -1 });
+    res.json(presetRoutes);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

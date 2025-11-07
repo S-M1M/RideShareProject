@@ -32,6 +32,7 @@ import UserManagement from "./pages/admin/UserManagement";
 import DriverManagement from "./pages/admin/DriverManagement";
 import VehicleManagement from "./pages/admin/VehicleManagement";
 import RouteAssignment from "./pages/admin/RouteAssignment";
+import AdminMapView from "./pages/admin/MapView";
 import RidesManagement from "./pages/admin/RidesManagement";
 import Finance from "./pages/admin/Finance";
 
@@ -155,6 +156,14 @@ function App() {
               element={
                 <ProtectedRoute role="admin">
                   <RouteAssignment />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/map"
+              element={
+                <ProtectedRoute role="admin">
+                  <AdminMapView />
                 </ProtectedRoute>
               }
             />

@@ -124,8 +124,8 @@ const RouteAssignment = () => {
                   </div>
 
                   <div>
-                    <p className="text-gray-500 mb-1">Intermediate Stops:</p>
-                    <p className="font-medium">{route.stops.length} stops</p>
+                    <p className="text-gray-500 mb-1">Stoppages:</p>
+                    <p className="font-medium">{route.stoppages?.length || 0} stoppages</p>
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t">

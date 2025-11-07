@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { MapPin } from "lucide-react";
 import Layout from "../../components/Layout";
-import { useAuth } from "../../contexts/AuthContext";
 import api from "../../utils/api";
 
-const DriverMapView = () => {
-  const { user } = useAuth();
+const AdminMapView = () => {
   const [presetRoutes, setPresetRoutes] = useState([]);
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [mapInstance, setMapInstance] = useState(null);
@@ -209,7 +207,7 @@ const DriverMapView = () => {
   const fetchPresetRoutes = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/drivers/preset-routes");
+      const response = await api.get("/admin/preset-routes");
       setPresetRoutes(response.data);
       
       // Select first route by default
@@ -354,4 +352,4 @@ const DriverMapView = () => {
   );
 };
 
-export default DriverMapView;
+export default AdminMapView;

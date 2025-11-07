@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Layout from "../../components/Layout";
-import { Search, User, Mail, Phone, Calendar } from "lucide-react";
+import { Search, User, Mail, Phone, Calendar, X, Star } from "lucide-react";
 import api from "../../utils/api";
 
 const UserManagement = () => {
@@ -8,6 +8,8 @@ const UserManagement = () => {
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -31,6 +33,31 @@ const UserManagement = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleViewDetails = (user) => {
+    setSelectedUser(user);
+    setShowDetailsModal(true);
+  };
+
+  const handleDeleteUser = async (userId) => {
+    if (!confirm("Are you sure you want to delete this user? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      await api.delete(`/admin/users/${userId}`);
+      alert("User deleted successfully!");
+      closeModal();
+      fetchUsers();
+    } catch (error) {
+      alert("Error deleting user: " + (error.response?.data?.error || error.message));
+    }
+  };
+
+  const closeModal = () => {
+    setShowDetailsModal(false);
+    setSelectedUser(null);
   };
 
   if (loading) {
@@ -125,11 +152,11 @@ const UserManagement = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button className="text-blue-600 hover:text-blue-900 mr-3">
+                      <button 
+                        onClick={() => handleViewDetails(user)}
+                        className="text-blue-600 hover:text-blue-900"
+                      >
                         View Details
-                      </button>
-                      <button className="text-red-600 hover:text-red-900">
-                        Suspend
                       </button>
                     </td>
                   </tr>
@@ -144,6 +171,87 @@ const UserManagement = () => {
             </div>
           )}
         </div>
+
+        {/* User Details Modal */}
+        {showDetailsModal && selectedUser && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h3 className="text-xl font-semibold text-gray-900">User Details</h3>
+                <button
+                  onClick={closeModal}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* User Info */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Full Name</label>
+                    <p className="mt-1 text-gray-900">{selectedUser.name}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">User ID</label>
+                    <p className="mt-1 text-gray-900 font-mono text-sm">{selectedUser._id}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Email</label>
+                    <p className="mt-1 text-gray-900">{selectedUser.email}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Phone</label>
+                    <p className="mt-1 text-gray-900">{selectedUser.phone || "Not provided"}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Stars Balance</label>
+                    <p className="mt-1 text-gray-900 flex items-center">
+                      <Star className="h-4 w-4 text-yellow-500 mr-1" />
+                      {selectedUser.stars || 0}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Joined Date</label>
+                    <p className="mt-1 text-gray-900">
+                      {new Date(selectedUser.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Last Updated</label>
+                    <p className="mt-1 text-gray-900">
+                      {new Date(selectedUser.updatedAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-between p-6 border-t border-gray-200">
+                <button
+                  onClick={() => handleDeleteUser(selectedUser._id)}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                >
+                  Delete User
+                </button>
+                <button
+                  onClick={closeModal}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );

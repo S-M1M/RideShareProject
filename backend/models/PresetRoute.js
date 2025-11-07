@@ -18,7 +18,7 @@ const presetRouteSchema = new mongoose.Schema({
     lat: { type: Number, required: true },
     lng: { type: Number, required: true },
   },
-  stops: [
+  stoppages: [
     {
       name: { type: String, required: true },
       lat: { type: Number, required: true },

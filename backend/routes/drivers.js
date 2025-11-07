@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import Route from "../models/Route.js";
 import Driver from "../models/Driver.js";
 import DriverAssignment from "../models/DriverAssignment.js";
+import PresetRoute from "../models/PresetRoute.js";
 
 const router = express.Router();
 
@@ -486,6 +487,16 @@ router.put("/assignments/:id/attendance", authenticateDriver, async (req, res) =
     });
   } catch (error) {
     console.error("Error marking attendance:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all preset routes (for drivers to view)
+router.get("/preset-routes", authenticateDriver, async (req, res) => {
+  try {
+    const presetRoutes = await PresetRoute.find({ active: true }).sort({ createdAt: -1 });
+    res.json(presetRoutes);
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Layout from "../../components/Layout";
-import { Plus, Search, Truck, Mail, Phone, Car, MapPin, Clock, X, Edit, Trash2 } from "lucide-react";
+import { Plus, Search, Truck, Mail, Phone, Car, MapPin, Clock, X, Edit, Trash2, User } from "lucide-react";
 import api from "../../utils/api";
 
 const DriverManagement = () => {
@@ -8,7 +8,7 @@ const DriverManagement = () => {
   const [vehicles, setVehicles] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
@@ -138,11 +138,12 @@ const DriverManagement = () => {
                 <button 
                   onClick={() => {
                     setSelectedDriver(driver);
-                    setShowAssignModal(true);
+                    setShowDetailsModal(true);
                   }}
-                  className="flex-1 bg-green-100 text-green-700 px-3 py-1 rounded-md hover:bg-green-200 text-sm"
+                  className="flex-1 bg-green-100 text-green-700 px-3 py-1 rounded-md hover:bg-green-200 text-sm flex items-center justify-center gap-1"
                 >
-                  Assign Route
+                  <User size={14} />
+                  View Details
                 </button>
                 <button 
                   onClick={() => {
@@ -199,17 +200,12 @@ const DriverManagement = () => {
         />
       )}
 
-      {/* Assign Route Modal */}
-      {showAssignModal && selectedDriver && (
-        <AssignRouteModal
+      {/* Driver Details Modal */}
+      {showDetailsModal && selectedDriver && (
+        <DriverDetailsModal
           driver={selectedDriver}
-          vehicles={vehicles}
           onClose={() => {
-            setShowAssignModal(false);
-            setSelectedDriver(null);
-          }}
-          onSuccess={() => {
-            setShowAssignModal(false);
+            setShowDetailsModal(false);
             setSelectedDriver(null);
           }}
         />
@@ -702,6 +698,90 @@ const AssignRouteModal = ({ driver, vehicles, onClose, onSuccess }) => {
             </div>
           </form>
         )}
+      </div>
+    </div>
+  );
+};
+
+const DriverDetailsModal = ({ driver, onClose }) => {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h3 className="text-xl font-semibold text-gray-900">Driver Details</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <X className="h-6 w-6" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {/* Driver Info */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-500">Full Name</label>
+              <p className="mt-1 text-gray-900">{driver.name}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-500">Driver ID</label>
+              <p className="mt-1 text-gray-900 font-mono text-sm">{driver._id}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-500">Email</label>
+              <p className="mt-1 text-gray-900">{driver.email}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-500">Phone</label>
+              <p className="mt-1 text-gray-900">{driver.phone || "Not provided"}</p>
+            </div>
+            <div className="col-span-2">
+              <label className="text-sm font-medium text-gray-500">Assigned Vehicle</label>
+              <p className="mt-1 text-gray-900">
+                {driver.assigned_vehicle_id ? (
+                  <span>
+                    {driver.assigned_vehicle_id.type} - {driver.assigned_vehicle_id.license_plate}
+                    <span className="text-gray-500 ml-2">
+                      (Capacity: {driver.assigned_vehicle_id.capacity})
+                    </span>
+                  </span>
+                ) : (
+                  <span className="text-gray-500">No vehicle assigned</span>
+                )}
+              </p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-500">Joined Date</label>
+              <p className="mt-1 text-gray-900">
+                {new Date(driver.createdAt).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-500">Last Updated</label>
+              <p className="mt-1 text-gray-900">
+                {new Date(driver.updatedAt).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end p-6 border-t border-gray-200">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );

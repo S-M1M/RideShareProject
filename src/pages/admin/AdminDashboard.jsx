@@ -135,45 +135,45 @@ const AdminDashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           <button
             onClick={() => navigate("/admin/users")}
-            className="bg-blue-600 text-white rounded-lg p-4 hover:bg-blue-700 transition-colors text-center"
+            className="bg-white border border-gray-200 rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-center"
           >
-            <Users className="h-6 w-6 mx-auto mb-2" />
-            <span className="block font-medium">Manage Users</span>
+            <Users className="h-8 w-8 mx-auto mb-3 text-blue-600" />
+            <span className="block font-medium text-gray-900">Manage Users</span>
           </button>
 
           <button
             onClick={() => navigate("/admin/drivers")}
-            className="bg-green-600 text-white rounded-lg p-4 hover:bg-green-700 transition-colors text-center"
+            className="bg-white border border-gray-200 rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-center"
           >
-            <Truck className="h-6 w-6 mx-auto mb-2" />
-            <span className="block font-medium">Manage Drivers</span>
+            <Truck className="h-8 w-8 mx-auto mb-3 text-green-600" />
+            <span className="block font-medium text-gray-900">Manage Drivers</span>
           </button>
 
           <button
             onClick={() => navigate("/admin/vehicles")}
-            className="bg-indigo-600 text-white rounded-lg p-4 hover:bg-indigo-700 transition-colors text-center"
+            className="bg-white border border-gray-200 rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-center"
           >
-            <Car className="h-6 w-6 mx-auto mb-2" />
-            <span className="block font-medium">Manage Vehicles</span>
+            <Car className="h-8 w-8 mx-auto mb-3 text-indigo-600" />
+            <span className="block font-medium text-gray-900">Manage Vehicles</span>
           </button>
 
           <button
             onClick={() => navigate("/admin/routes")}
-            className="bg-yellow-600 text-white rounded-lg p-4 hover:bg-yellow-700 transition-colors text-center"
+            className="bg-white border border-gray-200 rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-center"
           >
-            <MapPin className="h-6 w-6 mx-auto mb-2" />
-            <span className="block font-medium">Route Assignment</span>
+            <MapPin className="h-8 w-8 mx-auto mb-3 text-yellow-600" />
+            <span className="block font-medium text-gray-900">Route Assignment</span>
           </button>
 
           <button
             onClick={() => navigate("/admin/finance")}
-            className="bg-purple-600 text-white rounded-lg p-4 hover:bg-purple-700 transition-colors text-center"
+            className="bg-white border border-gray-200 rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-center"
           >
-            <DollarSign className="h-6 w-6 mx-auto mb-2" />
-            <span className="block font-medium">Financial Overview</span>
+            <DollarSign className="h-8 w-8 mx-auto mb-3 text-purple-600" />
+            <span className="block font-medium text-gray-900">Financial Overview</span>
           </button>
         </div>
 

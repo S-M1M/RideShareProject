@@ -59,6 +59,40 @@ router.get("/users", auth, requireAdmin, async (req, res) => {
   }
 });
 
+// Delete user
+router.delete("/users/:userId", auth, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    if (user.role === "admin") {
+      return res.status(403).json({ error: "Cannot delete admin users" });
+    }
+
+    // Delete user's subscriptions
+    await Subscription.deleteMany({ user_id: userId });
+
+    // Delete user's rides
+    await Ride.deleteMany({ user_id: userId });
+
+    // Delete user's star transactions
+    await StarTransaction.deleteMany({ user_id: userId });
+
+    // Delete the user
+    await User.findByIdAndDelete(userId);
+
+    res.json({ 
+      message: "User and all associated data deleted successfully"
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Driver management
 router.get("/drivers", auth, async (req, res) => {
   try {
@@ -374,7 +408,7 @@ router.post("/preset-routes", auth, requireAdmin, async (req, res) => {
       description,
       startPoint,
       endPoint,
-      stops,
+      stoppages,
       estimatedTime,
       fare,
     } = req.body;
@@ -384,7 +418,7 @@ router.post("/preset-routes", auth, requireAdmin, async (req, res) => {
       description,
       startPoint,
       endPoint,
-      stops,
+      stoppages,
       estimatedTime,
       fare,
     });
@@ -409,7 +443,7 @@ router.put("/preset-routes/:id", auth, requireAdmin, async (req, res) => {
       description,
       startPoint,
       endPoint,
-      stops,
+      stoppages,
       estimatedTime,
       fare,
       active,
@@ -422,7 +456,7 @@ router.put("/preset-routes/:id", auth, requireAdmin, async (req, res) => {
         description,
         startPoint,
         endPoint,
-        stops,
+        stoppages,
         estimatedTime,
         fare,
         active,

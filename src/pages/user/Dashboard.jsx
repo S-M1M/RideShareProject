@@ -90,14 +90,25 @@ const Dashboard = () => {
   return (
     <Layout title="Dashboard">
       <div className="space-y-6">
-        {/* Welcome Section */}
+        {/* Welcome Section with Buy Stars Button */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-2xl font-bold mb-2">
-            Welcome back, {user?.first_name || user?.name || "User"}!
-          </h2>
-          <p className="text-gray-600">
-            Manage your active subscriptions and rides
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold mb-2">
+                Welcome, {user?.first_name || user?.name || "User"}!
+              </h2>
+              <p className="text-gray-600">
+                Manage your active subscriptions and rides
+              </p>
+            </div>
+            <Link
+              to="/buy-stars"
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg hover:from-purple-600 hover:to-pink-600 transition-colors shadow-md"
+            >
+              <DollarSign className="h-5 w-5" />
+              <span className="font-semibold">Buy Stars</span>
+            </Link>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -155,6 +166,33 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Link
+            to="/subscription"
+            className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow border border-gray-200"
+          >
+            <h3 className="text-lg font-semibold mb-2 text-gray-900">New Subscription</h3>
+            <p className="text-gray-600">
+              Subscribe to daily, weekly, or monthly rides
+            </p>
+          </Link>
+
+          <Link
+            to={nextRide ? `/map?rideId=${nextRide._id}` : "/map"}
+            className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow border border-gray-200"
+          >
+            <h3 className="text-lg font-semibold mb-2 text-gray-900">Track Rides</h3>
+            <p className="text-gray-600">
+              {nextRide
+                ? `View your next ride on ${new Date(
+                    nextRide.rideDate
+                  ).toLocaleDateString()}`
+                : "View your rides on the map"}
+            </p>
+          </Link>
         </div>
 
         {/* Active Subscriptions List */}
@@ -282,43 +320,6 @@ const Dashboard = () => {
               </div>
             )}
           </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Link
-            to="/buy-stars"
-            className="bg-purple-600 text-white rounded-lg p-6 hover:bg-purple-700 transition-colors"
-          >
-            <h3 className="text-lg font-semibold mb-2">⭐ Buy Stars</h3>
-            <p className="text-purple-100">
-              Purchase stars to buy subscriptions
-            </p>
-          </Link>
-
-          <Link
-            to="/subscription"
-            className="bg-blue-600 text-white rounded-lg p-6 hover:bg-blue-700 transition-colors"
-          >
-            <h3 className="text-lg font-semibold mb-2">New Subscription</h3>
-            <p className="text-blue-100">
-              Subscribe to daily, weekly, or monthly rides
-            </p>
-          </Link>
-
-          <Link
-            to={nextRide ? `/map?rideId=${nextRide._id}` : "/map"}
-            className="bg-green-600 text-white rounded-lg p-6 hover:bg-green-700 transition-colors"
-          >
-            <h3 className="text-lg font-semibold mb-2">Track Rides</h3>
-            <p className="text-green-100">
-              {nextRide
-                ? `View your next ride on ${new Date(
-                    nextRide.rideDate
-                  ).toLocaleDateString()}`
-                : "View your rides on the map"}
-            </p>
-          </Link>
         </div>
       </div>
     </Layout>
