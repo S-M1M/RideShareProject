@@ -1850,8 +1850,8 @@ lsof -ti:5000 | xargs kill -9
    # Local
    MONGODB_URI=mongodb://localhost:27017/ridesharing
    
-   # Atlas
-   MONGODB_URI=mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/ridesharing?retryWrites=true&w=majority
+   # Atlas (replace <username>, <password>, and <cluster> with your values)
+   MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/ridesharing?retryWrites=true&w=majority
    ```
 
 #### Backend Won't Start
