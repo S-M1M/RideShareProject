@@ -1,6 +1,13 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { MapPin, CheckCircle, Navigation, ArrowRight } from "lucide-react";
+import {
+  MapPin,
+  CheckCircle,
+  Navigation,
+  ArrowRight,
+  Users,
+  X,
+} from "lucide-react";
 import Layout from "../../components/Layout";
 import { useAuth } from "../../contexts/AuthContext";
 import api from "../../utils/api";
@@ -16,6 +23,13 @@ const DriverRideMapView = () => {
   const [updating, setUpdating] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const mapRef = useRef(null);
+
+  // Attendance modal state
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
+  const [selectedStop, setSelectedStop] = useState(null);
+  const [usersAtStop, setUsersAtStop] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [markingAttendance, setMarkingAttendance] = useState(false);
 
   // Fetch ride details
   useEffect(() => {
@@ -345,6 +359,62 @@ const DriverRideMapView = () => {
     }
   };
 
+  const openAttendanceModal = async (stop, stopId) => {
+    setSelectedStop({ ...stop, stopId });
+    setShowAttendanceModal(true);
+    setLoadingUsers(true);
+
+    try {
+      const response = await api.get(
+        `/rides/${rideId}/users-at-stop/${stopId}`
+      );
+      setUsersAtStop(response.data.users);
+    } catch (error) {
+      console.error("Error fetching users at stop:", error);
+      // Don't show alert, just set empty array - modal will show appropriate message
+      setUsersAtStop([]);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  const markAttendance = async (userId, status) => {
+    setMarkingAttendance(true);
+    try {
+      await api.put(`/rides/${rideId}/attendance`, {
+        userId,
+        stopId: selectedStop.stopId,
+        status,
+      });
+
+      // Update local state
+      setUsersAtStop((prev) =>
+        prev.map((user) =>
+          user.userId === userId
+            ? {
+                ...user,
+                attendance: { status, timestamp: new Date() },
+              }
+            : user
+        )
+      );
+
+      // Refresh ride data to update attendance
+      await fetchRide(false);
+    } catch (error) {
+      console.error("Error marking attendance:", error);
+      // Error will be visible in console, but won't interrupt the user experience
+    } finally {
+      setMarkingAttendance(false);
+    }
+  };
+
+  const closeAttendanceModal = () => {
+    setShowAttendanceModal(false);
+    setSelectedStop(null);
+    setUsersAtStop([]);
+  };
+
   if (loading) {
     return (
       <Layout title="Ride Map">
@@ -459,7 +529,7 @@ const DriverRideMapView = () => {
           <div className="space-y-2">
             {/* Start Point */}
             {route?.startPoint && (
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-2">
                 <div className="flex flex-col items-center">
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 border-2 ${
@@ -476,11 +546,27 @@ const DriverRideMapView = () => {
                   </div>
                   <div className="w-0.5 h-8 bg-gray-300"></div>
                 </div>
-                <div className="pt-1">
-                  <p className="font-medium text-gray-900">
-                    {route.startPoint.name}
-                  </p>
-                  <p className="text-xs text-gray-500">Starting Point</p>
+                <div className="flex-1 pt-1">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {route.startPoint.name}
+                      </p>
+                      <p className="text-xs text-gray-500">Starting Point</p>
+                    </div>
+                    <button
+                      onClick={() =>
+                        openAttendanceModal(
+                          route.startPoint,
+                          `start_${route._id}`
+                        )
+                      }
+                      className="p-1 hover:bg-blue-100 rounded transition-colors"
+                      title="View Attendance"
+                    >
+                      <Users className="w-4 h-4 text-blue-600" />
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -494,7 +580,7 @@ const DriverRideMapView = () => {
               const isCurrent = ride.currentStopIndex === stopIndex;
 
               return (
-                <div key={index} className="flex items-start gap-3">
+                <div key={index} className="flex items-start gap-2">
                   <div className="flex flex-col items-center">
                     <div
                       className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 border-2 ${
@@ -509,11 +595,26 @@ const DriverRideMapView = () => {
                     </div>
                     <div className="w-0.5 h-8 bg-gray-300"></div>
                   </div>
-                  <div className="pt-1">
-                    <p className="font-medium text-gray-900">{stoppage.name}</p>
-                    <p className="text-xs text-gray-500">
-                      Stoppage {index + 1}
-                    </p>
+                  <div className="flex-1 pt-1">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {stoppage.name}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Stoppage {index + 1}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() =>
+                          openAttendanceModal(stoppage, stoppage._id)
+                        }
+                        className="p-1 hover:bg-blue-100 rounded transition-colors"
+                        title="View Attendance"
+                      >
+                        <Users className="w-4 h-4 text-blue-600" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -521,7 +622,7 @@ const DriverRideMapView = () => {
 
             {/* End Point */}
             {route?.endPoint && (
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-2">
                 <div className="flex flex-col items-center">
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 border-2 ${
@@ -541,11 +642,24 @@ const DriverRideMapView = () => {
                       : "E"}
                   </div>
                 </div>
-                <div className="pt-1">
-                  <p className="font-medium text-gray-900">
-                    {route.endPoint.name}
-                  </p>
-                  <p className="text-xs text-gray-500">End Point</p>
+                <div className="flex-1 pt-1">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {route.endPoint.name}
+                      </p>
+                      <p className="text-xs text-gray-500">End Point</p>
+                    </div>
+                    <button
+                      onClick={() =>
+                        openAttendanceModal(route.endPoint, `end_${route._id}`)
+                      }
+                      className="p-1 hover:bg-blue-100 rounded transition-colors"
+                      title="View Attendance"
+                    >
+                      <Users className="w-4 h-4 text-blue-600" />
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -566,6 +680,151 @@ const DriverRideMapView = () => {
           <div id="ride-map" className="w-full h-full"></div>
         </div>
       </div>
+
+      {/* Attendance Modal */}
+      {showAttendanceModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+          style={{ zIndex: 10000 }}
+        >
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-blue-50">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">
+                  Attendance - {selectedStop?.name}
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Mark users as present or absent at this stop
+                </p>
+              </div>
+              <button
+                onClick={closeAttendanceModal}
+                className="p-2 hover:bg-blue-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-4 overflow-y-auto flex-1">
+              {loadingUsers ? (
+                <div className="text-center py-8">
+                  <div className="text-gray-500">Loading users...</div>
+                </div>
+              ) : usersAtStop.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-600">
+                    No users scheduled for pickup at this stop
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {usersAtStop.map((user) => (
+                    <div
+                      key={user.userId}
+                      className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900">
+                            {user.name}
+                          </h4>
+                          <p className="text-sm text-gray-600">{user.email}</p>
+                          {user.phone && (
+                            <p className="text-sm text-gray-600">
+                              {user.phone}
+                            </p>
+                          )}
+                          <div className="mt-2 text-xs text-gray-500">
+                            <span className="font-medium">Pickup:</span>{" "}
+                            {user.pickupStopName} →{" "}
+                            <span className="font-medium">Drop:</span>{" "}
+                            {user.dropStopName}
+                          </div>
+                        </div>
+
+                        <div className="ml-4 flex flex-col gap-2">
+                          {user.attendance ? (
+                            <div
+                              className={`px-3 py-2 rounded-lg text-sm font-semibold text-center ${
+                                user.attendance.status === "present"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {user.attendance.status.toUpperCase()}
+                              <div className="text-xs font-normal mt-1">
+                                {new Date(
+                                  user.attendance.timestamp
+                                ).toLocaleTimeString()}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col gap-2">
+                              <button
+                                onClick={() =>
+                                  markAttendance(user.userId, "present")
+                                }
+                                disabled={markingAttendance}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                              >
+                                Present
+                              </button>
+                              <button
+                                onClick={() =>
+                                  markAttendance(user.userId, "absent")
+                                }
+                                disabled={markingAttendance}
+                                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                              >
+                                Absent
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {user.attendance && (
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                          <button
+                            onClick={() =>
+                              markAttendance(
+                                user.userId,
+                                user.attendance.status === "present"
+                                  ? "absent"
+                                  : "present"
+                              )
+                            }
+                            disabled={markingAttendance}
+                            className="text-sm text-blue-600 hover:text-blue-800 font-medium disabled:text-gray-400"
+                          >
+                            Change to{" "}
+                            {user.attendance.status === "present"
+                              ? "Absent"
+                              : "Present"}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-gray-200 bg-gray-50">
+              <button
+                onClick={closeAttendanceModal}
+                className="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };

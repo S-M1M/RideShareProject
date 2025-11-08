@@ -214,6 +214,67 @@ router.get("/available-for-subscription", auth, async (req, res) => {
   }
 });
 
+// Driver: Get users at a specific stop for a ride (MUST be before /:id route)
+router.get("/:id/users-at-stop/:stopId", auth, async (req, res) => {
+  try {
+    const { id: rideId, stopId } = req.params;
+
+    const ride = await Ride.findById(rideId).populate("presetRoute_id");
+    if (!ride) {
+      return res.status(404).json({ error: "Ride not found" });
+    }
+
+    // Verify driver owns this ride (or is admin)
+    if (
+      req.user.role !== "admin" &&
+      ride.driver_id.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    // Find all subscriptions for this ride where pickup_stop_id matches
+    const subscriptions = await Subscription.find({
+      ride_ids: rideId,
+      pickup_stop_id: stopId,
+      active: true,
+    }).populate("user_id", "name email phone");
+
+    // Get attendance data for these users at this stop
+    const usersWithAttendance = subscriptions.map((sub) => {
+      const attendanceRecord = ride.attendance?.find(
+        (a) =>
+          a.userId.toString() === sub.user_id._id.toString() &&
+          a.stopId === stopId
+      );
+
+      return {
+        userId: sub.user_id._id,
+        name: sub.user_id.name,
+        email: sub.user_id.email,
+        phone: sub.user_id.phone,
+        subscriptionId: sub._id,
+        pickupStopName: sub.pickup_stop_name,
+        dropStopName: sub.drop_stop_name,
+        attendance: attendanceRecord
+          ? {
+              status: attendanceRecord.status,
+              timestamp: attendanceRecord.timestamp,
+            }
+          : null,
+      };
+    });
+
+    res.json({
+      stopId,
+      stopName: null, // Will be determined on frontend
+      users: usersWithAttendance,
+    });
+  } catch (error) {
+    console.error("Error fetching users at stop:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get single ride details
 router.get("/:id", auth, async (req, res) => {
   try {
