@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from "react";
 import Layout from "../../components/Layout";
 import { useAuth } from "../../contexts/AuthContext";
-import { Plus, Users, MapPin, Phone, Mail, Clock, Calendar, Navigation, Play } from "lucide-react";
+import {
+  Plus,
+  Users,
+  MapPin,
+  Phone,
+  Mail,
+  Clock,
+  Calendar,
+  Navigation,
+  Play,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import api from "../../utils/api";
 
@@ -9,7 +19,9 @@ const DriverDashboard = () => {
   const { user } = useAuth();
   const [rides, setRides] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
 
   useEffect(() => {
     fetchRides();
@@ -17,7 +29,9 @@ const DriverDashboard = () => {
 
   const fetchRides = async () => {
     try {
-      const response = await api.get(`/rides/driver/my-rides?date=${selectedDate}`);
+      const response = await api.get(
+        `/rides/driver/my-rides?date=${selectedDate}`
+      );
       setRides(response.data);
     } catch (error) {
       console.error("Error fetching rides:", error);
@@ -33,8 +47,7 @@ const DriverDashboard = () => {
       fetchRides();
     } catch (error) {
       alert(
-        "Error starting ride: " +
-          (error.response?.data?.error || error.message)
+        "Error starting ride: " + (error.response?.data?.error || error.message)
       );
     }
   };
@@ -90,82 +103,83 @@ const DriverDashboard = () => {
             <div className="space-y-4">
               {rides.length === 0 ? (
                 <p className="text-gray-500 text-center py-8">
-                  No rides assigned for {new Date(selectedDate).toLocaleDateString()}
+                  No rides assigned for{" "}
+                  {new Date(selectedDate).toLocaleDateString()}
                 </p>
               ) : (
                 rides.map((ride) => (
-                    <div
-                      key={ride._id}
-                      className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <h4 className="font-semibold text-lg">
-                            {ride.presetRoute_id?.name || "Route"}
-                          </h4>
-                          <p className="text-sm text-gray-600">
-                            {ride.presetRoute_id?.description}
-                          </p>
-                        </div>
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            ride.status === "completed"
-                              ? "bg-green-100 text-green-800"
-                              : ride.status === "in-progress"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : ride.status === "cancelled"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-blue-100 text-blue-800"
-                          }`}
-                        >
-                          {ride.status}
+                  <div
+                    key={ride._id}
+                    className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h4 className="font-semibold text-lg">
+                          {ride.presetRoute_id?.name || "Route"}
+                        </h4>
+                        <p className="text-sm text-gray-600">
+                          {ride.presetRoute_id?.description}
+                        </p>
+                      </div>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          ride.status === "completed"
+                            ? "bg-green-100 text-green-800"
+                            : ride.status === "in-progress"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : ride.status === "cancelled"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-blue-100 text-blue-800"
+                        }`}
+                      >
+                        {ride.status}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+                      <div className="flex items-center text-gray-600">
+                        <Clock className="w-4 h-4 mr-2" />
+                        <span>{ride.scheduledStartTime}</span>
+                      </div>
+                      <div className="flex items-center text-gray-600">
+                        <MapPin className="w-4 h-4 mr-2" />
+                        <span>
+                          {ride.presetRoute_id?.stops?.length || 0} stops
                         </span>
                       </div>
-
-                      <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-                        <div className="flex items-center text-gray-600">
-                          <Clock className="w-4 h-4 mr-2" />
-                          <span>{ride.scheduledStartTime}</span>
-                        </div>
-                        <div className="flex items-center text-gray-600">
-                          <MapPin className="w-4 h-4 mr-2" />
-                          <span>
-                            {ride.presetRoute_id?.stops?.length || 0} stops
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        {ride.status === "scheduled" && (
-                          <button
-                            onClick={() => startRide(ride._id)}
-                            className="flex items-center space-x-1 bg-green-600 text-white px-3 py-2 rounded-md hover:bg-green-700 text-sm"
-                          >
-                            <Play className="w-4 h-4" />
-                            <span>Start Ride</span>
-                          </button>
-                        )}
-
-                        {ride.status === "in-progress" && (
-                          <Link
-                            to={`/driver/map?rideId=${ride._id}`}
-                            className="flex items-center space-x-1 bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 text-sm"
-                          >
-                            <Navigation className="w-4 h-4" />
-                            <span>View Map</span>
-                          </Link>
-                        )}
-
-                        {ride.status === "completed" && (
-                          <span className="flex items-center space-x-1 text-green-600 px-3 py-2 text-sm">
-                            ✓ Ride Completed
-                          </span>
-                        )}
-                      </div>
                     </div>
-                  ))
-                )}
-              </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {ride.status === "scheduled" && (
+                        <button
+                          onClick={() => startRide(ride._id)}
+                          className="flex items-center space-x-1 bg-green-600 text-white px-3 py-2 rounded-md hover:bg-green-700 text-sm"
+                        >
+                          <Play className="w-4 h-4" />
+                          <span>Start Ride</span>
+                        </button>
+                      )}
+
+                      {ride.status === "in-progress" && (
+                        <Link
+                          to={`/driver/ride-map?rideId=${ride._id}`}
+                          className="flex items-center space-x-1 bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 text-sm"
+                        >
+                          <Navigation className="w-4 h-4" />
+                          <span>View Map</span>
+                        </Link>
+                      )}
+
+                      {ride.status === "completed" && (
+                        <span className="flex items-center space-x-1 text-green-600 px-3 py-2 text-sm">
+                          ✓ Ride Completed
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       </div>

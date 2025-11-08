@@ -409,7 +409,11 @@ router.put("/:id/progress", auth, async (req, res) => {
 
     // Check if all stops are completed
     const route = await PresetRoute.findById(ride.presetRoute_id);
-    const totalStops = 1 + (route.stops?.length || 0) + 1; // start + intermediate + end
+    const stoppagesData = route.stoppages || route.stops || [];
+    const totalStops =
+      (route.startPoint ? 1 : 0) +
+      stoppagesData.length +
+      (route.endPoint ? 1 : 0);
 
     if (ride.currentStopIndex >= totalStops) {
       ride.status = "completed";

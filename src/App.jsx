@@ -17,12 +17,14 @@ import MyRides from "./pages/user/MyRides";
 import MapView from "./pages/user/MapView";
 import Profile from "./pages/user/Profile";
 import BuyStars from "./pages/user/BuyStars";
+import UserRideMapView from "./pages/user/UserRideMapView";
 
 // Driver Pages
 import DriverLogin from "./pages/driver/DriverLogin";
 import DriverRegister from "./pages/driver/DriverRegister";
 import DriverDashboard from "./pages/driver/DriverDashboard";
 import DriverMapView from "./pages/driver/DriverMapView";
+import DriverRideMapView from "./pages/driver/DriverRideMapView";
 
 // Admin Pages
 import AdminLogin from "./pages/admin/AdminLogin";
@@ -76,6 +78,14 @@ function App() {
               }
             />
             <Route
+              path="/my-rides"
+              element={
+                <ProtectedRoute role="user">
+                  <MyRides />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/map"
               element={
                 <ProtectedRoute role={["user", "driver"]}>
@@ -99,6 +109,14 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/user/ride-map"
+              element={
+                <ProtectedRoute role="user">
+                  <UserRideMapView />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Driver Protected Routes */}
             <Route
@@ -114,6 +132,14 @@ function App() {
               element={
                 <ProtectedRoute role="driver">
                   <DriverMapView />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/driver/ride-map"
+              element={
+                <ProtectedRoute role="driver">
+                  <DriverRideMapView />
                 </ProtectedRoute>
               }
             />

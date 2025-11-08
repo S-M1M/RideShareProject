@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { Calendar, MapPin, Clock, Bus, AlertCircle, CheckCircle, XCircle, DollarSign } from "lucide-react";
+import {
+  Calendar,
+  MapPin,
+  Clock,
+  Bus,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  DollarSign,
+  Navigation,
+} from "lucide-react";
+import { Link } from "react-router-dom";
 import Layout from "../../components/Layout";
 import { useAuth } from "../../contexts/AuthContext";
 import api from "../../utils/api";
@@ -36,21 +47,23 @@ const MyRides = () => {
 
     // Check 12-hour deadline
     const rideDateTime = new Date(ride.rideDate);
-    const [time, period] = ride.scheduledStartTime.split(' ');
-    let [hours, minutes] = time.split(':').map(Number);
-    
-    if (period === 'PM' && hours !== 12) hours += 12;
-    if (period === 'AM' && hours === 12) hours = 0;
-    
+    const [time, period] = ride.scheduledStartTime.split(" ");
+    let [hours, minutes] = time.split(":").map(Number);
+
+    if (period === "PM" && hours !== 12) hours += 12;
+    if (period === "AM" && hours === 12) hours = 0;
+
     rideDateTime.setHours(hours, minutes, 0, 0);
-    
+
     const now = new Date();
     const hoursUntilRide = (rideDateTime - now) / (1000 * 60 * 60);
-    
+
     if (hoursUntilRide < 12) {
-      return { 
-        canCancel: false, 
-        reason: `Cannot cancel within 12 hours (${hoursUntilRide.toFixed(1)}h remaining)` 
+      return {
+        canCancel: false,
+        reason: `Cannot cancel within 12 hours (${hoursUntilRide.toFixed(
+          1
+        )}h remaining)`,
       };
     }
 
@@ -72,7 +85,7 @@ const MyRides = () => {
 
     const confirmed = window.confirm(
       `Cancel ride on ${new Date(ride.rideDate).toLocaleDateString()}?\n\n` +
-      `You will receive 50% refund of single day cost.`
+        `You will receive 50% refund of single day cost.`
     );
 
     if (!confirmed) return;
@@ -91,8 +104,8 @@ const MyRides = () => {
 
       alert(
         `Ride cancelled successfully!\n` +
-        `Refund: ${response.data.refundAmount} stars\n` +
-        `New balance: ${response.data.starsBalance} stars`
+          `Refund: ${response.data.refundAmount} stars\n` +
+          `New balance: ${response.data.starsBalance} stars`
       );
 
       // Reload user and rides
@@ -102,7 +115,7 @@ const MyRides = () => {
       console.error("Error cancelling ride:", error);
       const errorMsg = error.response?.data?.error || "Failed to cancel ride";
       alert(errorMsg);
-      
+
       // If already cancelled, refresh the list
       if (errorMsg.includes("already cancelled")) {
         await fetchRides();
@@ -122,8 +135,10 @@ const MyRides = () => {
     };
 
     return (
-      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${colors[status]}`}>
-        {status.toUpperCase().replace('-', ' ')}
+      <span
+        className={`px-3 py-1 rounded-full text-xs font-semibold ${colors[status]}`}
+      >
+        {status.toUpperCase().replace("-", " ")}
       </span>
     );
   };
@@ -155,8 +170,8 @@ const MyRides = () => {
                   onClick={() => setActiveTab(tab.id)}
                   className={`px-6 py-3 text-sm font-medium transition-colors ${
                     activeTab === tab.id
-                      ? 'border-b-2 border-blue-500 text-blue-600'
-                      : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? "border-b-2 border-blue-500 text-blue-600"
+                      : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
                   }`}
                 >
                   {tab.label}
@@ -174,11 +189,13 @@ const MyRides = () => {
         ) : rides.length === 0 ? (
           <div className="bg-white rounded-lg shadow-md p-12 text-center">
             <Bus className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">No rides found</h3>
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">
+              No rides found
+            </h3>
             <p className="text-gray-500 mb-6">
               {activeTab === "all"
                 ? "You don't have any rides yet. Purchase a subscription to get started!"
-                : `No ${activeTab.replace('-', ' ')} rides at the moment.`}
+                : `No ${activeTab.replace("-", " ")} rides at the moment.`}
             </p>
             <a
               href="/subscription"
@@ -191,7 +208,7 @@ const MyRides = () => {
           <div className="space-y-4">
             {rides.map((ride) => {
               const cancelCheck = canCancelRide(ride);
-              
+
               return (
                 <div
                   key={ride._id}
@@ -214,9 +231,12 @@ const MyRides = () => {
                     <div className="flex items-start gap-3">
                       <Calendar className="w-5 h-5 text-gray-400 mt-0.5" />
                       <div>
-                        <p className="text-sm font-medium text-gray-700">Date & Time</p>
+                        <p className="text-sm font-medium text-gray-700">
+                          Date & Time
+                        </p>
                         <p className="text-sm text-gray-600">
-                          {new Date(ride.rideDate).toLocaleDateString()} at {ride.scheduledStartTime}
+                          {new Date(ride.rideDate).toLocaleDateString()} at{" "}
+                          {ride.scheduledStartTime}
                         </p>
                       </div>
                     </div>
@@ -225,8 +245,12 @@ const MyRides = () => {
                     <div className="flex items-start gap-3">
                       <Bus className="w-5 h-5 text-gray-400 mt-0.5" />
                       <div>
-                        <p className="text-sm font-medium text-gray-700">Driver</p>
-                        <p className="text-sm text-gray-600">{ride.driver_id?.name || 'N/A'}</p>
+                        <p className="text-sm font-medium text-gray-700">
+                          Driver
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {ride.driver_id?.name || "N/A"}
+                        </p>
                       </div>
                     </div>
 
@@ -234,9 +258,11 @@ const MyRides = () => {
                     <div className="flex items-start gap-3">
                       <MapPin className="w-5 h-5 text-green-500 mt-0.5" />
                       <div>
-                        <p className="text-sm font-medium text-gray-700">Pickup</p>
+                        <p className="text-sm font-medium text-gray-700">
+                          Pickup
+                        </p>
                         <p className="text-sm text-gray-600">
-                          {ride.userSubscription?.pickup_stop_name || 'N/A'}
+                          {ride.userSubscription?.pickup_stop_name || "N/A"}
                         </p>
                       </div>
                     </div>
@@ -245,9 +271,11 @@ const MyRides = () => {
                     <div className="flex items-start gap-3">
                       <MapPin className="w-5 h-5 text-red-500 mt-0.5" />
                       <div>
-                        <p className="text-sm font-medium text-gray-700">Drop</p>
+                        <p className="text-sm font-medium text-gray-700">
+                          Drop
+                        </p>
                         <p className="text-sm text-gray-600">
-                          {ride.userSubscription?.drop_stop_name || 'N/A'}
+                          {ride.userSubscription?.drop_stop_name || "N/A"}
                         </p>
                       </div>
                     </div>
@@ -263,7 +291,10 @@ const MyRides = () => {
                         </span>
                         {ride.attendanceTimestamp && (
                           <span className="text-green-600">
-                            at {new Date(ride.attendanceTimestamp).toLocaleTimeString()}
+                            at{" "}
+                            {new Date(
+                              ride.attendanceTimestamp
+                            ).toLocaleTimeString()}
                           </span>
                         )}
                       </div>
@@ -276,9 +307,14 @@ const MyRides = () => {
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2">
                           <XCircle className="w-4 h-4 text-red-600" />
-                          <span className="font-medium text-red-800">Cancelled</span>
+                          <span className="font-medium text-red-800">
+                            Cancelled
+                          </span>
                           <span className="text-red-600">
-                            on {new Date(ride.cancellationInfo.cancelled_at).toLocaleDateString()}
+                            on{" "}
+                            {new Date(
+                              ride.cancellationInfo.cancelled_at
+                            ).toLocaleDateString()}
                           </span>
                         </div>
                         <div className="flex items-center gap-1 text-red-700 font-semibold">
@@ -290,7 +326,18 @@ const MyRides = () => {
                   )}
 
                   {/* Actions */}
-                  <div className="flex gap-3">
+                  <div className="flex flex-wrap gap-3">
+                    {/* View Map Button - Show for all non-cancelled rides */}
+                    {!ride.isCancelled && (
+                      <Link
+                        to={`/user/ride-map?rideId=${ride._id}`}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                      >
+                        <Navigation className="w-4 h-4" />
+                        View Map
+                      </Link>
+                    )}
+
                     {cancelCheck.canCancel && (
                       <button
                         onClick={() => handleCancelRide(ride)}
@@ -298,15 +345,18 @@ const MyRides = () => {
                         className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-medium"
                       >
                         <XCircle className="w-4 h-4" />
-                        {cancellingRide === ride._id ? "Cancelling..." : "Cancel Ride"}
+                        {cancellingRide === ride._id
+                          ? "Cancelling..."
+                          : "Cancel Ride"}
                       </button>
                     )}
-                    {!cancelCheck.canCancel && ride.effectiveStatus === "scheduled" && (
-                      <div className="text-sm text-gray-500 italic flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4" />
-                        {cancelCheck.reason}
-                      </div>
-                    )}
+                    {!cancelCheck.canCancel &&
+                      ride.effectiveStatus === "scheduled" && (
+                        <div className="text-sm text-gray-500 italic flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4" />
+                          {cancelCheck.reason}
+                        </div>
+                      )}
                   </div>
                 </div>
               );
@@ -319,4 +369,3 @@ const MyRides = () => {
 };
 
 export default MyRides;
-
