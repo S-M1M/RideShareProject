@@ -13,6 +13,7 @@ const UserRideMapView = () => {
 
   const [ride, setRide] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [mapReady, setMapReady] = useState(false);
   const mapRef = useRef(null);
   const mapContainerRef = useRef(null);
 
@@ -24,11 +25,11 @@ const UserRideMapView = () => {
       return;
     }
 
-    fetchRide();
+    fetchRide(true); // Initial load
 
     // Set up polling for live updates
     const interval = setInterval(() => {
-      fetchRide();
+      fetchRide(false); // Subsequent loads - don't show loading state
     }, 10000); // Refresh every 10 seconds
 
     return () => clearInterval(interval);
@@ -36,9 +37,11 @@ const UserRideMapView = () => {
 
   // Initialize map once
   useEffect(() => {
-    if (loading || !ride || mapRef.current) return;
+    // Don't wait for ride data, just make sure we haven't already initialized
+    if (loading || mapRef.current) return;
 
     const initMap = async () => {
+      console.log("=== INITIALIZING USER MAP ===");
       const L = (await import("leaflet")).default;
 
       // Import CSS only once
@@ -76,10 +79,13 @@ const UserRideMapView = () => {
       }).addTo(map);
 
       mapRef.current = map;
+      console.log("=== USER MAP INITIALIZED ===", map);
 
-      // Force initial render
+      // Force initial render and then mark map as ready
       setTimeout(() => {
         map.invalidateSize();
+        setMapReady(true);
+        console.log("=== USER MAP MARKED AS READY ===");
       }, 100);
     };
 
@@ -92,13 +98,22 @@ const UserRideMapView = () => {
         mapRef.current = null;
       }
     };
-  }, [loading, ride]);
+  }, [loading]);
 
   // Update map markers when ride changes
   useEffect(() => {
-    if (!mapRef.current || !ride || !ride.presetRoute_id) return;
+    console.log("=== USER UPDATE MAP USEEFFECT TRIGGERED ===");
+    console.log("mapRef.current:", mapRef.current);
+    console.log("mapReady:", mapReady);
+    console.log("ride:", ride);
+
+    if (!mapReady || !mapRef.current || !ride || !ride.presetRoute_id) {
+      console.log("Skipping user map update - missing requirements");
+      return;
+    }
 
     const updateMap = async () => {
+      console.log("=== STARTING USER UPDATE MAP ===");
       try {
         const L = (await import("leaflet")).default;
 
@@ -136,6 +151,7 @@ const UserRideMapView = () => {
         const userDropStop = ride.userSubscription?.drop_stop_name;
 
         // Create markers for all stops
+        let stoppageCounter = 0;
         allStops.forEach((stop, index) => {
           if (!stop.lat || !stop.lng) {
             console.warn(`Stop ${index} missing coordinates:`, stop);
@@ -150,7 +166,7 @@ const UserRideMapView = () => {
           const isUserDrop = stop.name === userDropStop;
 
           let bgColor = "#3B82F6"; // Default blue
-          let label = index + 1;
+          let label;
           let borderColor = "white";
 
           if (stop.type === "start") {
@@ -159,6 +175,10 @@ const UserRideMapView = () => {
           } else if (stop.type === "end") {
             bgColor = "#EF4444"; // Red for end
             label = "E";
+          } else {
+            // This is a stoppage - use numeric label
+            stoppageCounter++;
+            label = stoppageCounter;
           }
 
           if (isCompleted) {
@@ -257,16 +277,18 @@ const UserRideMapView = () => {
     };
 
     updateMap();
-  }, [ride]);
+  }, [ride, mapReady]);
 
-  const fetchRide = async () => {
+  const fetchRide = async (initialLoad = true) => {
     try {
-      setLoading(true);
+      if (initialLoad) {
+        setLoading(true);
+      }
       const response = await api.get(`/rides/${rideId}`);
       setRide(response.data);
     } catch (error) {
       console.error("Error fetching ride:", error);
-      if (loading) {
+      if (initialLoad) {
         // Only show alert on first load
         alert(
           "Error loading ride: " +
@@ -275,7 +297,9 @@ const UserRideMapView = () => {
         navigate("/my-rides");
       }
     } finally {
-      setLoading(false);
+      if (initialLoad) {
+        setLoading(false);
+      }
     }
   };
 
