@@ -48,16 +48,10 @@ const DriverLogin = () => {
             Driver Sign In
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Or{" "}
-            <Link
-              to="/driver/register"
-              className="font-medium text-blue-600 hover:text-blue-500"
-            >
-              create a new driver account
-            </Link>
-          </p>
-          <p className="mt-2 text-center text-sm text-gray-600">
             Access your driver dashboard
+          </p>
+          <p className="mt-2 text-center text-xs text-gray-500">
+            Contact your administrator to create a driver account
           </p>
         </div>
 
